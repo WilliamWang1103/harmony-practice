@@ -1,0 +1,6 @@
+# Netlify 部署配置（纯静态站点，无需构建）
+[build]
+  # 无需构建命令
+  command = ""
+  # 发布目录：项目根目录（index.html 所在处）
+  publish = "."
