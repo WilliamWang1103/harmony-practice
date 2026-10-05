@@ -1,0 +1,85 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>VexFlow 大谱表四部和声 Demo</title>
+    <style>
+        body { font-family: -apple-system, "PingFang SC", "Microsoft YaHei", sans-serif; margin: 24px; background: #fafafa; color: #222; }
+        h1 { font-size: 20px; margin: 0 0 4px; }
+        .hint { color: #666; font-size: 14px; margin-bottom: 16px; }
+        #status { padding: 10px 12px; border-radius: 6px; margin-bottom: 16px; font-size: 14px; }
+        #status.ok { background: #e8f5e9; color: #2e7d32; }
+        #status.err { background: #ffebee; color: #c62828; }
+        #score { width: 100%; max-width: 720px; background: #fff; border: 1px solid #e0e0e0; border-radius: 8px; overflow-x: auto; padding: 8px 0; }
+    </style>
+</head>
+<body>
+    <h1>VexFlow 大谱表四部和声 Demo</h1>
+    <p class="hint">用于验证本地 VexFlow 是否可用。渲染一个 C 大三和弦：S=G4 / A=E4 / T=C4 / B=C3。</p>
+    <div id="status"></div>
+    <div id="score"></div>
+
+    <script src="lib/vexflow-min.js" onerror="vexflowMissing()"></script>
+    <script>
+        function setStatus(msg, ok) {
+            const el = document.getElementById('status');
+            el.textContent = msg;
+            el.className = ok ? 'ok' : 'err';
+        }
+        function vexflowMissing() {
+            setStatus('❌ 未找到 lib/vexflow-min.js。请先下载该库（见操作步骤）。', false);
+        }
+        function drawScore() {
+            const container = document.getElementById('score');
+            if (!window.Vex || !window.Vex.Flow) { vexflowMissing(); return; }
+            const VF = Vex.Flow;
+            setStatus('✅ VexFlow 已加载，正在渲染…', true);
+
+            container.innerHTML = '';
+            const width = Math.max(container.clientWidth - 20, 560);
+            const renderer = new VF.Renderer(container, VF.Renderer.Backends.SVG);
+            renderer.resize(width, 300);
+            const ctx = renderer.getContext();
+
+            const treble = new VF.Stave(10, 40, width - 30);
+            treble.addClef('treble').addTimeSignature('4/4');
+            const bass = new VF.Stave(10, 150, width - 30);
+            bass.addClef('bass').addTimeSignature('4/4');
+
+            treble.setContext(ctx).draw();
+            bass.setContext(ctx).draw();
+            new VF.StaveConnector(treble, bass).setType('brace').setContext(ctx).draw();
+
+            function note(key, dir) {
+                const n = new VF.StaveNote({ keys: [key], duration: 'w' });
+                n.setStemDirection(dir);
+                return n;
+            }
+
+            const voiceS = new VF.Voice({ num_beats: 4, beat_value: 4 });
+            voiceS.addTickables([note('g/4', VF.Stem.UP)]);
+            const voiceA = new VF.Voice({ num_beats: 4, beat_value: 4 });
+            voiceA.addTickables([note('e/4', VF.Stem.DOWN)]);
+            const voiceT = new VF.Voice({ num_beats: 4, beat_value: 4 });
+            voiceT.addTickables([note('c/4', VF.Stem.UP)]);
+            const voiceB = new VF.Voice({ num_beats: 4, beat_value: 4 });
+            voiceB.addTickables([note('c/3', VF.Stem.DOWN)]);
+
+            const justify = treble.getNoteEndX() - treble.getNoteStartX() - 10;
+            new VF.Formatter().joinVoices([voiceS, voiceA]).format([voiceS, voiceA], justify);
+            new VF.Formatter().joinVoices([voiceT, voiceB]).format([voiceT, voiceB], justify);
+
+            voiceS.draw(ctx, treble);
+            voiceA.draw(ctx, treble);
+            voiceT.draw(ctx, bass);
+            voiceB.draw(ctx, bass);
+
+            setStatus('✅ 渲染成功：大谱表 + 4 声部（S/A 在高音谱，T/B 在低音谱）。', true);
+        }
+
+        window.addEventListener('DOMContentLoaded', drawScore);
+        window.addEventListener('resize', drawScore);
+    </script>
+</body>
+</html>

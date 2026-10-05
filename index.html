@@ -1,0 +1,366 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport"
+        content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <title>基础和声学综合训练系统</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="stylesheet" href="styles.css">
+</head>
+
+<body>
+    <div class="app-wrapper">
+    <!-- 首页 -->
+    <div id="home-page" class="page active">
+        <div class="container">
+            <div class="home-page">
+                <!-- 顶部时钟栏（保留原样式，仅增加时钟） -->
+                <div class="status-bar">
+                    <span>🎹 基础和声学系统</span>
+                    <span class="current-datetime" id="homeClock">--:--:--</span>
+                </div>
+                <div class="home-header">
+                    <h1>基础和声学综合训练系统</h1>
+                    <p class="welcome-message">欢迎使用内蒙古民族大学音乐学院学习陪伴程序</p>
+                </div>
+
+                <!-- 学生信息模块 -->
+                <div class="user-info-card">
+                    <h3>学生信息</h3>
+                    <div class="form-group">
+                        <label for="school">学校</label>
+                        <input type="text" id="school" class="form-input" placeholder="内蒙古民族大学音乐学院">
+                    </div>
+                    <div class="form-group">
+                        <label for="major-class">专业班级</label>
+                        <input type="text" id="major-class" class="form-input" placeholder="2025 级音乐学 1 班">
+                    </div>
+                    <div class="form-group">
+                        <label for="name">姓名</label>
+                        <input type="text" id="name" class="form-input" value="" autocomplete="name"
+                            placeholder="请输入姓名">
+                    </div>
+                    <div class="form-group">
+                        <label for="teacher">指导教师</label>
+                        <input type="text" id="teacher" class="form-input" placeholder="王向辉">
+                    </div>
+                    <button id="save-user" class="btn save">保存信息</button>
+                    <div id="save-status" class="save-status"></div>
+                </div>
+
+                <!-- 选择练习模式 -->
+                <div class="practice-mode-section">
+                    <h3 class="practice-mode-heading">选择练习模式</h3>
+                    <p class="practice-mode-hint" id="practice-mode-hint">请先填写并保存学生信息后再选择练习模式</p>
+                    <div class="practice-mode-grid">
+                        <button class="practice-mode-btn" data-mode="zheng-san"><i class="fas fa-layer-group"></i><span
+                                class="pm-title">正三和弦</span><span class="pm-desc">构建、连接、分析与布局</span></button>
+                        <button class="practice-mode-btn" data-mode="shuqi"><i class="fas fa-circle-nodes"></i><span
+                                class="pm-title">属七和弦</span><span class="pm-desc">结构、解决与和声布局</span></button>
+                        <button class="practice-mode-btn" data-mode="fusan"><i class="fas fa-sitemap"></i><span
+                                class="pm-title">副三和弦</span><span class="pm-desc">功能拓展、自然音体系</span></button>
+                        <button class="practice-mode-btn" data-mode="qita"><i class="fas fa-chart-line"></i><span
+                                class="pm-title">其他七和弦&模进</span><span class="pm-desc">七和弦、模进与和声</span></button>
+                        <button class="practice-mode-btn" data-mode="litiao"><i
+                                class="fas fa-arrow-right-arrow-left"></i><span class="pm-title">离调转调</span><span
+                                class="pm-desc">半音体系、转调手法</span></button>
+                        <button class="practice-mode-btn" data-mode="exam"><i class="fas fa-trophy"></i><span
+                                class="pm-title">综合考试</span><span class="pm-desc">全面测评与和声分析</span></button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 正三和弦 hub 页面 -->
+    <div id="zheng-san-page" class="page">
+        <div class="container">
+            <div class="zheng-san-hub">
+                <div class="status-bar" style="margin-bottom: 8px;">
+                    <button id="back-from-zheng-san" class="back-btn" style="background:transparent; color:#9C27B0;"><i
+                            class="fas fa-arrow-left"></i> 返回</button>
+                    <span class="current-datetime" id="hubClock">--:--:--</span>
+                </div>
+                <div class="zs-header">
+                    <div class="zs-header-text">
+                        <h2 class="zs-title">正三和弦</h2>
+                        <p class="zs-subtitle">测试阶段 · 全部章节开放学习</p>
+                    </div>
+                </div>
+                <div class="zs-progress-overview">
+                    <h3 class="zs-progress-title"><i class="fas fa-chart-bar"></i> 学习进度概览</h3>
+                    <div class="zs-stats-grid">
+                        <div class="zs-stat-cell">
+                            <div class="zs-stat-value" id="zs-total-progress">0%</div>
+                            <div class="zs-stat-label">总进度</div>
+                        </div>
+                        <div class="zs-stat-cell">
+                            <div class="zs-stat-value" id="zs-avg-score">0%</div>
+                            <div class="zs-stat-label">平均正确率</div>
+                        </div>
+                        <div class="zs-stat-cell">
+                            <div class="zs-stat-value" id="zs-mastered-count">0</div>
+                            <div class="zs-stat-label">已通关关卡</div>
+                        </div>
+                        <div class="zs-stat-cell">
+                            <div class="zs-stat-value" id="zs-learning-time">0</div>
+                            <div class="zs-stat-label">学习时长(分钟)</div>
+                        </div>
+                    </div>
+                </div>
+                <div class="zs-phase-tabs">
+                    <button class="zs-phase-tab active" data-phase="basic">🎯 基础阶段 (1–4)</button>
+                    <button class="zs-phase-tab" data-phase="advanced">🚀 进阶阶段 (5–10)</button>
+                    <button class="zs-phase-tab" data-phase="improve">💪 提高阶段 (11–14)</button>
+                </div>
+                <div id="zheng-san-course-list" class="zs-course-list"></div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 学习页面（正三和弦专用） -->
+    <div id="learn-page" class="page">
+        <div class="container">
+            <div class="exercise-page">
+                <div class="status-bar" style="margin-bottom: 5px;">
+                    <button id="back-home-learn" class="back-btn" style="background:transparent; color:#9C27B0;"><i
+                            class="fas fa-arrow-left"></i> 返回</button>
+                    <span class="current-datetime" id="learnClock">--:--:--</span>
+                </div>
+                <h2 class="exercise-title" id="learn-title">📖 学习模式</h2>
+
+                <div id="learn-content" class="learn-content"></div>
+                <div id="practice-content" class="practice-content" style="display:none;">
+                    <div class="hw-topbar">
+                        <button id="back-to-teach-btn" class="hw-back-btn"><i class="fas fa-arrow-left"></i> 返回教学</button>
+                    </div>
+                    <div class="practice-tip"><i class="fas fa-lightbulb"></i> 请根据题目要求，点击钢琴键盘上的正确音高</div>
+                    <div class="stats-panel-mini">
+                        <div class="stat-item">
+                            <div class="stat-value" id="practice-score">0</div>
+                            <div class="stat-label">本题得分</div>
+                        </div>
+                        <div class="stat-item">
+                            <div class="stat-value" id="practice-correct">0</div>
+                            <div class="stat-label">正确</div>
+                        </div>
+                        <div class="stat-item">
+                            <div class="stat-value" id="practice-wrong">0</div>
+                            <div class="stat-label">错误</div>
+                        </div>
+                        <div class="stat-item">
+                            <div class="stat-value" id="practice-progress">0/10</div>
+                            <div class="stat-label">进度</div>
+                        </div>
+                    </div>
+                    <div id="practice-question" class="practice-question"></div>
+                    <div id="triad-type-selector" class="triad-type-selector" style="display:none;">
+                        <div class="triad-type-hint">请选择练习题型：</div>
+                        <div id="practice-type-btns"></div>
+                    </div>
+                    <div id="triad-options" class="triad-options" style="display:none;">
+                        <button class="triad-option-btn" data-quality="major">大三和弦</button>
+                        <button class="triad-option-btn" data-quality="minor">小三和弦</button>
+                        <button class="triad-option-btn" data-quality="dim">减三和弦</button>
+                        <button class="triad-option-btn" data-quality="aug">增三和弦</button>
+                    </div>
+                    <div id="triad-build-staff" class="triad-build-staff" style="display:none;"></div>
+                    <div id="fourpart-voice" class="fourpart-voice" style="display:none;">
+                        <span class="tb-sub">声部</span>
+                        <button class="voice-btn active" data-voice="S">女高 S</button>
+                        <button class="voice-btn" data-voice="A">女低 A</button>
+                        <button class="voice-btn" data-voice="T">男高 T</button>
+                        <button class="voice-btn" data-voice="B">男低 B</button>
+                    </div>
+                    <div id="fourpart-staff" class="fourpart-staff" style="display:none;"></div>
+                    <div class="play-controls" id="play-controls">
+                        <button id="play-question-btn" class="btn">▶ 播放题目</button>
+                        <button id="triad-random-btn" class="btn" style="display:none;">🎲 随机播放</button>
+                        <button id="triad-melodic-btn" class="btn" style="display:none;">🎵 旋律播放</button>
+                        <button id="submit-practice-btn" class="btn success">提交答案</button>
+                        <button id="show-answer-btn" class="btn" style="display:none;">👁 显示答案</button>
+                        <button id="next-practice-btn" class="btn secondary" style="display:none;">下一题</button>
+                        <button id="reset-practice-btn" class="btn warning">重新作答</button>
+                        <button id="practice-export-btn" class="btn">⬇ 导出</button>
+                    </div>
+                    <div id="practice-feedback" class="feedback-message"></div>
+                </div>
+
+                <!-- 课后习题编辑器 -->
+                <div id="homework-content" class="homework-content" style="display:none;">
+                    <div class="hw-topbar">
+                        <button id="hw-back-btn" class="hw-back-btn"><i class="fas fa-arrow-left"></i> 返回教学</button>
+                    </div>
+                    <div class="action-bar">
+                        <button id="hw-play-btn">▶ 播放</button>
+                        <button id="hw-check-btn">✓ 检查</button>
+                        <button id="hw-export-btn">⬇ 导出</button>
+                        <span class="spacer"></span>
+                        <button id="hw-undo-btn">↶ 撤销</button>
+                        <button id="hw-clear-btn">✕ 清空</button>
+                    </div>
+                    <div class="toolbar">
+                        <div class="tb-tabs">
+                            <button class="tb-tab active" data-tab="setup"><span class="tab-idx">1</span>设置</button>
+                            <button class="tb-tab" data-tab="voice"><span class="tab-idx">2</span>声部</button>
+                            <button class="tb-tab" data-tab="dur"><span class="tab-idx">3</span>时值</button>
+                            <button class="tb-tab" data-tab="edit"><span class="tab-idx">4</span>编辑</button>
+                            <button class="tb-tab" data-tab="chord"><span class="tab-idx">5</span>标记</button>
+                        </div>
+
+                        <div class="tb-panel active" data-panel="setup">
+                            <div class="tb-row">
+                                <span class="tb-sub">调式调性</span>
+                                <select id="hw-key-select"></select>
+                                <span class="tb-sub" style="margin-left:10px;">拍号</span>
+                                <select id="hw-time-select">
+                                    <option value="2/4">2/4</option>
+                                    <option value="3/4">3/4</option>
+                                    <option value="4/4" selected>4/4</option>
+                                </select>
+                            </div>
+                        </div>
+
+                        <div class="tb-panel" data-panel="voice">
+                            <button class="voice-btn active" data-voice="S">女高 S</button>
+                            <button class="voice-btn" data-voice="A">女低 A</button>
+                            <button class="voice-btn" data-voice="T">男高 T</button>
+                            <button class="voice-btn" data-voice="B">男低 B</button>
+                        </div>
+
+                        <div class="tb-panel" data-panel="dur">
+                            <div class="tb-row">
+                                <span class="tb-sub">音符 / 休止</span>
+                                <button class="mode-btn active" data-mode="note">音符</button>
+                                <button class="mode-btn" data-mode="rest">休止</button>
+                            </div>
+                            <div class="tb-row">
+                                <span class="tb-sub">时值</span>
+                                <button class="dur-btn" data-dur="w">全</button>
+                                <button class="dur-btn" data-dur="h">二分</button>
+                                <button class="dur-btn active" data-dur="q">四分</button>
+                                <button class="dur-btn" data-dur="8">八分</button>
+                                <button class="dur-btn" data-dur="16">十六</button>
+                                <button class="dur-btn" data-dur="hd">二分附点</button>
+                                <button class="dur-btn" data-dur="qd">四分附点</button>
+                                <button class="dur-btn" data-dur="8d">八分附点</button>
+                            </div>
+                        </div>
+
+                        <div class="tb-panel" data-panel="edit">
+                            <div class="tb-row">
+                                <span class="tb-sub">写入模式</span>
+                                <button class="mode-btn active" data-mode="note">音符</button>
+                                <button class="mode-btn" data-mode="erase">橡皮</button>
+                                <button class="mode-btn" data-mode="tie">连线</button>
+                            </div>
+                            <div class="tb-row">
+                                <span class="tb-sub">乐谱</span>
+                                <button id="hw-add-measure-btn">加小节</button>
+                                <button id="hw-del-measure-btn">删小节</button>
+                            </div>
+                        </div>
+
+                        <div class="tb-panel" data-panel="chord">
+                            <div class="tb-row">
+                                <span class="tb-sub">功能</span>
+                                <span id="hw-func-btns"></span>
+                            </div>
+                            <div class="tb-row">
+                                <span class="tb-sub">转位</span>
+                                <span id="hw-inv-btns"></span>
+                            </div>
+                        </div>
+                    </div>
+                    <div id="hw-status" class="hw-status"></div>
+                    <div id="hw-question" class="hw-question" style="display:none;"></div>
+                    <div id="hw-score" class="hw-score"></div>
+                    <div id="hw-check-summary" class="hw-check-summary"></div>
+                </div>
+
+                <!-- 钢琴底部按钮（默认收起，点击从底部滑出） -->
+                <button class="piano-toggle-btn" id="pianoToggleBtn">钢琴</button>
+                <!-- 钢琴容器（浮动，默认隐藏） -->
+                <div class="piano-scroll-wrapper piano-hidden" id="pianoScrollWrapper">
+                    <div class="piano" id="pianoKeyboard"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 章节练习页面 -->
+    <div id="chapter-practice-page" class="page">
+        <div class="container">
+            <div class="exercise-page">
+                <div class="status-bar" style="margin-bottom: 5px;">
+                    <button id="back-to-chapter-list" class="back-btn" style="background:transparent; color:#9C27B0;"><i
+                            class="fas fa-arrow-left"></i> 返回</button>
+                    <span class="current-datetime" id="chapterPracticeClock">--:--:--</span>
+                </div>
+                <h2 class="exercise-title" id="chapter-practice-title">📘 章节练习</h2>
+                <div class="chapter-practice-meta" id="chapter-practice-meta">练习重点</div>
+                <div class="practice-panel">
+                    <div class="staff-toolbar">
+                        <button id="staff-add-note-btn" class="btn btn-small">添加音符</button>
+                        <button id="staff-clear-btn" class="btn btn-small secondary">清空</button>
+                    </div>
+                    <canvas id="blank-staff-canvas" class="blank-staff-canvas"></canvas>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 等级完成页面 -->
+    <div id="level-complete-page" class="page">
+        <div class="container">
+            <div class="test-end-page">
+                <div class="status-bar" style="margin-bottom: 5px;">
+                    <button id="back-to-course-btn-end" class="back-btn"
+                        style="background:transparent; color:#9C27B0;"><i class="fas fa-arrow-left"></i> 返回</button>
+                    <span class="current-datetime" id="endClock">--:--:--</span>
+                </div>
+                <div class="test-end-header">
+                    <h2>🎉 恭喜！</h2>
+                    <p id="level-complete-name">等级挑战完成</p>
+                </div>
+                <div class="compact-user-info">
+                    <p><strong>学校：</strong><span id="end-school">—</span></p>
+                    <p><strong>专业班级：</strong><span id="end-major-class">—</span></p>
+                    <p><strong>姓名：</strong><span id="end-name">—</span></p>
+                    <p><strong>指导教师：</strong><span id="end-teacher">—</span></p>
+                </div>
+                <div class="score-summary">
+                    <div class="score-card total-score">
+                        <div class="score-value" id="level-score">0</div>
+                        <div class="score-label">总分</div>
+                    </div>
+                    <div class="score-card pitch-score">
+                        <div class="score-value" id="level-correct">0</div>
+                        <div class="score-label">正确题数</div>
+                    </div>
+                    <div class="score-card quality-score">
+                        <div class="score-value" id="level-percent">0%</div>
+                        <div class="score-label">正确率</div>
+                    </div>
+                </div>
+                <div class="test-analysis-panel">
+                    <h3>📊 测试结果分析</h3>
+                    <div id="level-analysis" class="analysis-details"></div>
+                </div>
+                <div class="end-page-buttons">
+                    <button id="next-level-btn" class="btn primary">继续下一级</button>
+                    <button id="retry-level-btn" class="btn success">重新挑战</button>
+                    <button id="back-to-course-btn" class="btn">返回课程</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    </div><!-- /app-wrapper -->
+    <script src="lib/vexflow-min.js"></script>
+    <script src="app.js"></script>
+</body>
+
+</html>

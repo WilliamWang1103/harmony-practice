@@ -1,0 +1,2779 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>VexFlow 可写大谱表 Demo</title>
+    <style>
+        body {
+            font-family: -apple-system, "PingFang SC", "Microsoft YaHei", sans-serif;
+            margin: 20px;
+            background: #f7f7f9;
+            color: #222;
+        }
+
+        h1 {
+            font-size: 20px;
+            margin: 0 0 4px;
+        }
+
+        .hint {
+            color: #666;
+            font-size: 14px;
+            margin-bottom: 12px;
+            line-height: 1.6;
+        }
+
+        #status {
+            padding: 8px 12px;
+            border-radius: 6px;
+            margin-bottom: 12px;
+            font-size: 14px;
+            background: #eceff1;
+            color: #37474f;
+        }
+
+        #status.error {
+            background: #ffebee;
+            color: #c62828;
+        }
+
+        /* 题目输入框（五线谱上方） */
+        .topic-bar {
+            max-width: 860px;
+            margin-bottom: 8px;
+            display: flex;
+            align-items: flex-start;
+            gap: 8px;
+            background: #fff;
+            border: 1px solid #e0e0e0;
+            border-radius: 8px;
+            padding: 8px 12px;
+        }
+
+        .topic-bar label {
+            font-size: 13px;
+            color: #7b1fa2;
+            font-weight: 700;
+            white-space: nowrap;
+            padding-top: 4px;
+        }
+
+        .topic-bar textarea {
+            flex: 1;
+            border: none;
+            outline: none;
+            font-size: 14px;
+            padding: 4px 2px;
+            background: transparent;
+            color: #222;
+            font-family: inherit;
+            resize: vertical;
+            min-height: 22px;
+            max-height: 200px;
+            line-height: 1.5;
+            overflow-y: auto;
+            /* 自动换行 + 随内容增高，见 autoGrowTopic() */
+        }
+
+        .topic-bar textarea::placeholder {
+            color: #aaa;
+        }
+
+        /* 用户信息状态条 */
+        .user-bar {
+            max-width: 860px;
+            margin-bottom: 8px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            background: #f3e5f5;
+            border: 1px solid #ce93d8;
+            border-radius: 8px;
+            padding: 7px 12px;
+            font-size: 13px;
+            color: #6a1b9a;
+        }
+
+        .user-bar #user-info-text {
+            flex: 1;
+        }
+
+        .user-bar button {
+            padding: 4px 12px;
+            border: 1px solid #ab47bc;
+            border-radius: 6px;
+            background: #fff;
+            color: #6a1b9a;
+            cursor: pointer;
+            font-size: 12px;
+        }
+
+        /* 模态弹窗 */
+        .modal-mask {
+            position: fixed;
+            inset: 0;
+            background: rgba(0, 0, 0, 0.5);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 1000;
+            padding: 16px;
+        }
+
+        .modal-mask.hidden {
+            display: none;
+        }
+
+        .modal-box {
+            background: #fff;
+            border-radius: 12px;
+            padding: 24px;
+            width: 100%;
+            max-width: 420px;
+            box-shadow: 0 10px 40px rgba(0, 0, 0, 0.25);
+        }
+
+        .modal-box h2 {
+            margin: 0 0 6px;
+            font-size: 18px;
+            color: #6a1b9a;
+        }
+
+        .modal-hint {
+            font-size: 13px;
+            color: #777;
+            margin: 0 0 16px;
+            line-height: 1.5;
+        }
+
+        .modal-field {
+            margin-bottom: 12px;
+        }
+
+        .modal-field label {
+            display: block;
+            font-size: 13px;
+            color: #555;
+            margin-bottom: 4px;
+        }
+
+        .modal-field input {
+            width: 100%;
+            box-sizing: border-box;
+            padding: 8px 10px;
+            border: 1px solid #ccc;
+            border-radius: 6px;
+            font-size: 14px;
+        }
+
+        .modal-field input:focus {
+            outline: none;
+            border-color: #ab47bc;
+        }
+
+        .modal-error {
+            color: #e53935;
+            font-size: 13px;
+            min-height: 18px;
+            margin-bottom: 8px;
+        }
+
+        .modal-actions {
+            text-align: right;
+        }
+
+        .modal-actions button.primary {
+            padding: 9px 20px;
+            background: #7b1fa2;
+            color: #fff;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 14px;
+            font-weight: 600;
+        }
+
+        .modal-actions button.primary:hover {
+            background: #6a1b9a;
+        }
+
+        .toolbar {
+            background: #fff;
+            border: 1px solid #e0e0e0;
+            border-radius: 8px;
+            padding: 0;
+            margin-bottom: 12px;
+            max-width: 860px;
+            overflow: hidden;
+        }
+
+        /* 顶部水平标签栏 */
+        .tb-tabs {
+            display: flex;
+            background: #f5f5f5;
+            border-bottom: 1px solid #e0e0e0;
+        }
+
+        .tb-tab {
+            flex: 1;
+            padding: 9px 4px;
+            border: none;
+            background: transparent;
+            cursor: pointer;
+            font-size: 12.5px;
+            color: #666;
+            border-bottom: 3px solid transparent;
+            transition: all 0.15s;
+            white-space: nowrap;
+        }
+
+        .tb-tab .tab-idx {
+            display: inline-block;
+            font-size: 11px;
+            color: #b39ddb;
+            font-weight: 700;
+            margin-right: 2px;
+        }
+
+        .tb-tab.active .tab-idx {
+            color: #7b1fa2;
+        }
+
+        .tb-tab:hover {
+            background: #ececec;
+            color: #7b1fa2;
+        }
+
+        .tb-tab.active {
+            color: #7b1fa2;
+            font-weight: 700;
+            background: #fff;
+            border-bottom-color: #7b1fa2;
+        }
+
+        /* 标签内容面板 */
+        .tb-panel {
+            display: none;
+            padding: 10px 12px;
+        }
+
+        .tb-panel.active {
+            display: block;
+        }
+
+        /* 常驻操作条：播放/检查/清空，始终可见 */
+        .action-bar {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            flex-wrap: wrap;
+            max-width: 860px;
+            margin-bottom: 12px;
+            background: #fff;
+            border: 1px solid #e0e0e0;
+            border-radius: 8px;
+            padding: 8px 12px;
+        }
+
+        .action-bar .spacer {
+            flex: 1;
+        }
+
+        .action-bar button {
+            padding: 7px 14px;
+            border: 1px solid #ccc;
+            border-radius: 6px;
+            background: #fff;
+            cursor: pointer;
+            font-size: 13px;
+            font-weight: 600;
+        }
+
+        .action-bar #play-btn {
+            background: #e8f5e9;
+            border-color: #81c784;
+            color: #2e7d32;
+        }
+
+        .action-bar #check-btn {
+            background: #e3f2fd;
+            border-color: #64b5f6;
+            color: #1565c0;
+        }
+
+        .action-bar #clear-btn {
+            background: #fbe9e7;
+            border-color: #ffab91;
+            color: #bf360c;
+        }
+
+        .action-bar #undo-btn {
+            background: #fff8e1;
+            border-color: #ffd54f;
+            color: #f57f17;
+        }
+
+        .toolbar button {
+            margin: 2px 3px 2px 0;
+            padding: 6px 10px;
+            border: 1px solid #ccc;
+            border-radius: 6px;
+            background: #fff;
+            cursor: pointer;
+            font-size: 12px;
+        }
+
+        .toolbar button.active {
+            background: #7b1fa2;
+            color: #fff;
+            border-color: #7b1fa2;
+        }
+
+        .voice-btn.active[data-voice="S"] {
+            background: #d32f2f;
+            border-color: #d32f2f;
+        }
+
+        .voice-btn.active[data-voice="A"] {
+            background: #1976d2;
+            border-color: #1976d2;
+        }
+
+        .voice-btn.active[data-voice="T"] {
+            background: #388e3c;
+            border-color: #388e3c;
+        }
+
+        .voice-btn.active[data-voice="B"] {
+            background: #f57c00;
+            border-color: #f57c00;
+        }
+
+        .timbre-btn.active {
+            background: #455a64;
+            border-color: #455a64;
+        }
+
+        .toolbar select {
+            padding: 5px 6px;
+            border: 1px solid #ccc;
+            border-radius: 6px;
+            font-size: 12px;
+            margin-right: 8px;
+            background: #fff;
+        }
+
+        .tb-title {
+            font-size: 11px;
+            color: #90a4ae;
+            margin: 4px 0 3px;
+            letter-spacing: 1px;
+        }
+
+        .tb-sub {
+            display: inline-block;
+            color: #78909c;
+            font-size: 12px;
+            margin-right: 6px;
+        }
+
+        kbd {
+            display: inline-block;
+            padding: 0 4px;
+            margin-left: 3px;
+            border: 1px solid #bbb;
+            border-bottom-width: 2px;
+            border-radius: 3px;
+            background: #f5f5f5;
+            font-size: 10px;
+            font-family: inherit;
+            color: #555;
+        }
+
+        .tb-row {
+            margin: 6px 0;
+        }
+
+        .tb-row:first-child {
+            margin-top: 0;
+        }
+
+        #speed-range {
+            vertical-align: middle;
+        }
+
+        #speed-label {
+            font-size: 12px;
+            color: #37474f;
+            margin-left: 6px;
+        }
+
+        #score {
+            width: 100%;
+            max-width: 860px;
+            background: #fff;
+            border: 1px solid #e0e0e0;
+            border-radius: 8px;
+            overflow-x: auto;
+            padding: 6px 8px;
+            cursor: crosshair;
+        }
+
+        #score svg {
+            display: block;
+        }
+
+        #check-summary {
+            max-width: 860px;
+            margin-top: 12px;
+            font-size: 13px;
+            line-height: 1.7;
+            color: #37474f;
+        }
+
+        #check-summary .ok {
+            color: #2e7d32;
+        }
+
+        #check-summary .bad {
+            color: #c62828;
+        }
+
+        #piano {
+            display: block;
+            /* 默认显示钢琴键盘 */
+            max-width: 860px;
+            margin-top: 12px;
+            padding: 10px;
+            background: #fff;
+            border: 1px solid #e0e0e0;
+            border-radius: 8px;
+            overflow-x: auto;
+            white-space: nowrap;
+        }
+
+        #piano.show {
+            display: block;
+        }
+
+        .piano-key {
+            display: inline-block;
+            margin: 0 1px;
+            padding: 0;
+            cursor: pointer;
+            border: 1px solid #999;
+            border-radius: 0 0 5px 5px;
+            height: 90px;
+            font-size: 11px;
+            vertical-align: top;
+        }
+
+        .piano-key.white {
+            width: 42px;
+            background: #fff;
+            color: #333;
+            display: inline-flex;
+            align-items: flex-end;
+            /* 音名文字贴白键底部 */
+            justify-content: center;
+            padding-bottom: 4px;
+            box-sizing: border-box;
+        }
+
+        .piano-key.black {
+            width: 30px;
+            height: 58px;
+            background: #222;
+            color: #fff;
+            border-color: #000;
+            border-radius: 0 0 4px 4px;
+            margin-left: -15px;
+            margin-right: -15px;
+            position: relative;
+            top: 0;
+            display: inline-flex;
+            align-items: flex-start;
+            /* 黑键文字靠上，避免被白键遮挡 */
+            justify-content: center;
+            padding-top: 3px;
+            box-sizing: border-box;
+        }
+
+        /* 打印 / 另存为 PDF：只显示打印容器内容 */
+        #export-stage {
+            position: fixed;
+            left: -99999px;
+            top: 0;
+            background: #fff;
+            padding: 24px;
+        }
+
+        @media print {
+            body>*:not(#export-stage) {
+                display: none !important;
+            }
+
+            #export-stage {
+                position: static !important;
+                left: auto !important;
+                padding: 0 !important;
+                width: 100% !important;
+            }
+
+            #export-stage .print-article {
+                color: #000;
+            }
+
+            #export-stage .print-article h1 {
+                font-size: 20px;
+                color: #000;
+                margin: 0 0 10px;
+                border-bottom: 2px solid #000;
+                padding-bottom: 6px;
+            }
+
+            #export-stage .print-article .meta {
+                font-size: 13px;
+                margin: 3px 0;
+                line-height: 1.7;
+            }
+
+            #export-stage .print-article .score-hold {
+                margin-top: 14px;
+            }
+
+            #export-stage svg {
+                max-width: 100%;
+                height: auto;
+            }
+        }
+    </style>
+</head>
+
+<body>
+<h1>VexFlow 可写大谱表 Demo</h1>
+    <p class="hint">
+        操作：<b>①设置</b>选调式拍号 → <b>②声部</b>选 SATB → <b>③时值</b>选音符/休止与时值 → 点谱面拍位（粉色光标）→ 点钢琴键输入音高 → <b>⑤标记</b>放和弦标记。<br>
+        修改：<b>④编辑</b>可加小节、折行、橡皮擦除、改小节线（先点小节线选中变橙，再点样式）；播放/检查/撤销/清空常驻底部。
+    </p>
+<!-- 用户信息状态条：显示当前用户，点击"修改"会清空练习并重新填写 -->
+    <div class="user-bar" id="user-bar">
+        <span id="user-info-text">👤 未填写用户信息</span>
+        <button id="edit-user-btn" title="修改用户信息会清空当前练习">修改信息</button>
+    </div>
+
+<!-- 播放设置（音色 / 速度），随播放常驻条下方，默认折叠 -->
+    <div class="action-bar" id="play-settings" style="padding:6px 12px; font-size:12px;">
+        <span class="tb-sub">音色</span>
+        <button class="timbre-btn active" data-timbre="piano">钢琴</button>
+        <button class="timbre-btn" data-timbre="strings">弦乐</button>
+        <button class="timbre-btn" data-timbre="horn">圆号</button>
+        <button class="timbre-btn" data-timbre="voice">人声</button>
+        <span class="tb-sub" style="margin-left:10px;">速度</span>
+        <input type="range" id="speed-range" min="40" max="200" value="100" step="10">
+        <span id="speed-label">100%</span>
+    </div>
+<!-- 常驻操作条：播放 / 检查 / 撤销 / 清空 / 导出（始终可见） -->
+    <div class="action-bar">
+        <button id="play-btn">▶ 播放</button>
+        <button id="check-btn">✓ 检查</button>
+        <button id="export-img-btn">⬇ 导出图片</button>
+        <button id="export-pdf-btn">🖨 导出 PDF</button>
+        <span class="spacer"></span>
+        <button id="undo-btn">↶ 撤销</button>
+        <button id="clear-btn">✕ 清空</button>
+    </div>
+<div id="status"></div>
+
+<div class="toolbar">
+        <!-- 顶部水平标签栏：按写作流程排序 -->
+        <div class="tb-tabs">
+            <button class="tb-tab active" data-tab="setup"><span class="tab-idx">1</span>设置</button>
+            <button class="tb-tab" data-tab="voice"><span class="tab-idx">2</span>声部</button>
+            <button class="tb-tab" data-tab="dur"><span class="tab-idx">3</span>时值</button>
+            <button class="tb-tab" data-tab="edit"><span class="tab-idx">4</span>编辑</button>
+            <button class="tb-tab" data-tab="chord"><span class="tab-idx">5</span>标记</button>
+        </div>
+
+        <!-- ① 设置面板：调号 / 拍号 -->
+        <div class="tb-panel active" data-panel="setup">
+            <div class="tb-row">
+                <span class="tb-sub">调式调性</span>
+                <select id="key-select"></select>
+                <span class="tb-sub" style="margin-left:10px;">拍号</span>
+                <select id="time-select">
+                    <option value="2/4">2/4</option>
+                    <option value="3/4">3/4</option>
+                    <option value="4/4" selected>4/4</option>
+                </select>
+            </div>
+        </div>
+
+        <!-- ② 声部面板 -->
+        <div class="tb-panel" data-panel="voice">
+            <button class="voice-btn active" data-voice="S">女高 S</button>
+            <button class="voice-btn" data-voice="A">女低 A</button>
+            <button class="voice-btn" data-voice="T">男高 T</button>
+            <button class="voice-btn" data-voice="B">男低 B</button>
+        </div>
+
+        <!-- ③ 时值面板 -->
+        <div class="tb-panel" data-panel="dur">
+            <div class="tb-row">
+                <span class="tb-sub">音符 / 休止</span>
+                <button class="mode-btn active" data-mode="note">音符</button>
+                <button class="mode-btn" data-mode="rest">休止</button>
+            </div>
+            <div class="tb-row">
+                <span class="tb-sub">时值</span>
+                <button class="dur-btn" data-dur="w">全</button>
+                <button class="dur-btn" data-dur="h">二分</button>
+                <button class="dur-btn active" data-dur="q">四分</button>
+                <button class="dur-btn" data-dur="8">八分</button>
+                <button class="dur-btn" data-dur="16">十六</button>
+                <button class="dur-btn" data-dur="hd">二分附点</button>
+                <button class="dur-btn" data-dur="qd">四分附点</button>
+                <button class="dur-btn" data-dur="8d">八分附点</button>
+                <button id="triplet-btn">三连音</button>
+            </div>
+        </div>
+
+        <!-- ④ 编辑面板：模式 + 乐谱修改操作 -->
+        <div class="tb-panel" data-panel="edit">
+            <div class="tb-row">
+                <span class="tb-sub">写入模式</span>
+                <button class="mode-btn active" data-mode="note">音符</button>
+                <button class="mode-btn" data-mode="erase">橡皮</button>
+                <button class="mode-btn" data-mode="tie">连线</button>
+                <button class="mode-btn" data-mode="select">选择</button>
+            </div>
+            <div class="tb-row">
+                <span class="tb-sub">乐谱</span>
+                <button id="add-measure-btn">加小节</button>
+                <button id="del-measure-btn">删小节</button>
+                <button id="break-btn">折行</button>
+                <button id="piano-toggle">钢琴键盘</button>
+            </div>
+            <div class="tb-row">
+                <span class="tb-sub">小节线</span>
+                <button class="bar-btn" data-bar="singleRight">单竖线</button>
+                <button class="bar-btn" data-bar="double">双竖线</button>
+                <button class="bar-btn" data-bar="boldDoubleRight">终止线</button>
+                <span class="tb-sub" style="margin-left:8px;color:#bbb;">（先点小节线选中，再点样式）</span>
+            </div>
+            <div class="tb-row">
+                <span class="tb-sub">等音</span>
+                <button id="enharmonic-up-btn">♯ 升号<kbd>↑</kbd></button>
+                <button id="enharmonic-down-btn">♭ 降号<kbd>↓</kbd></button>
+                <span class="tb-sub" style="margin-left:8px;color:#bbb;">（先点谱面音符选中，再切换）</span>
+            </div>
+        </div>
+
+        <!-- ⑤ 标记面板：功能和弦 + 转位 -->
+        <div class="tb-panel" data-panel="chord">
+            <div class="tb-row">
+                <span class="tb-sub">功能</span>
+                <span id="chord-func-btns"></span>
+            </div>
+            <div class="tb-row">
+                <span class="tb-sub">转位</span>
+                <button class="inv-btn active" data-inv="none">原位</button>
+                <button class="inv-btn" data-inv="6">6</button>
+                <button class="inv-btn" data-inv="64">4/6</button>
+                <button class="inv-btn" data-inv="7">7</button>
+                <button class="inv-btn" data-inv="56">5/6</button>
+                <button class="inv-btn" data-inv="34">3/4</button>
+                <button class="inv-btn" data-inv="2">2</button>
+            </div>
+        </div>
+
+        <!-- 隐藏的常量（保留程序引用，不显示） -->
+        <select id="barline-select" style="display:none;">
+            <option value="singleRight">单竖线</option>
+            <option value="double">双竖线</option>
+            <option value="boldDoubleRight">终止线</option>
+        </select>
+    </div>
+<!-- 题目输入框（置于五线谱正上方）：textarea 支持自动换行 -->
+    <div class="topic-bar">
+        <label for="topic-input">📝 练习题目</label>
+        <textarea id="topic-input" rows="1" placeholder="例如：为下列旋律配四部和声（C 大调，4/4）"></textarea>
+    </div>
+
+<div id="score"></div>
+    <div id="check-summary"></div>
+    <div id="piano"></div>
+
+    <!-- 用户信息模态弹窗：首次必须填写后才能练习（默认隐藏） -->
+    <div class="modal-mask hidden" id="user-modal">
+        <div class="modal-box">
+            <h2>填写用户信息</h2>
+            <p class="modal-hint">填写后即可开始四部和声写作练习。信息将随导出作业一并提交。</p>
+            <div class="modal-field">
+                <label>姓名 / 学号 <span style="color:#e53935;">*</span></label>
+                <input type="text" id="um-name" placeholder="如：张三 / 20240101">
+            </div>
+            <div class="modal-field">
+                <label>学院 / 班级</label>
+                <input type="text" id="um-class" placeholder="如：内蒙古民族大学音乐学院 2025级音乐表演班">
+            </div>
+            <div class="modal-field">
+                <label>指导教师（选填）</label>
+                <input type="text" id="um-teacher" placeholder="王向辉">
+            </div>
+            <div id="user-modal-error" class="modal-error"></div>
+            <div class="modal-actions">
+                <button id="um-save-btn" class="primary">保存并开始练习</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- 导出/打印用的离屏渲染容器（含用户信息 + 完成时间），导出时填充 -->
+    <div id="export-stage"></div>
+
+    <script src="lib/vexflow-min.js"></script>
+    <script>
+        const VOICES = ['S', 'A', 'T', 'B'];
+        const VOICE_NAMES = { S: '女高', A: '女低', T: '男高', B: '男低' };
+        const VOICE_COLORS = { S: '#d32f2f', A: '#1976d2', T: '#388e3c', B: '#f57c00' };
+        const DUR_BEATS = { w: 4, hd: 3, h: 2, qd: 1.5, q: 1, '8d': 0.75, '8': 0.5, '16': 0.25 };
+        const DUR_LABEL = { w: '全音符', hd: '附点二分', h: '二分音符', qd: '附点四分', q: '四分音符', '8d': '附点八分', '8': '八分音符', '16': '十六分音符' };
+        const MODE_NAMES = { note: '音符', rest: '休止', erase: '橡皮', tie: '连线', label: '标记', select: '选择' };
+        const UNIT_DURS = [['w', 16], ['hd', 12], ['h', 8], ['qd', 6], ['q', 4], ['8d', 3], ['8', 2], ['16', 1]];
+        const INV_OPTIONS = [
+            { id: 'none', label: '原位', figures: [] },
+            { id: '6', label: '6', figures: [['6', 'sub']] },
+            { id: '64', label: '4/6', figures: [['4', 'sub'], ['6', 'sup']] },
+            { id: '7', label: '7', figures: [['7', 'sub']] },
+            { id: '56', label: '5/6', figures: [['5', 'sub'], ['6', 'sup']] },
+            { id: '34', label: '3/4', figures: [['3', 'sub'], ['4', 'sup']] },
+            { id: '2', label: '2', figures: [['2', 'sub']] }
+        ];
+        const KEY_OPTIONS = [
+            { letter: 'C', acc: '', major: true, spec: 'C', sig: '无升降' },
+            { letter: 'G', acc: '', major: true, spec: 'G', sig: '1♯' },
+            { letter: 'D', acc: '', major: true, spec: 'D', sig: '2♯' },
+            { letter: 'A', acc: '', major: true, spec: 'A', sig: '3♯' },
+            { letter: 'E', acc: '', major: true, spec: 'E', sig: '4♯' },
+            { letter: 'B', acc: '', major: true, spec: 'B', sig: '5♯' },
+            { letter: 'F', acc: '♯', major: true, spec: 'F#', sig: '6♯' },
+            { letter: 'F', acc: '', major: true, spec: 'F', sig: '1♭' },
+            { letter: 'B', acc: '♭', major: true, spec: 'Bb', sig: '2♭' },
+            { letter: 'E', acc: '♭', major: true, spec: 'Eb', sig: '3♭' },
+            { letter: 'A', acc: '♭', major: true, spec: 'Ab', sig: '4♭' },
+            { letter: 'D', acc: '♭', major: true, spec: 'Db', sig: '5♭' },
+            { letter: 'G', acc: '♭', major: true, spec: 'Gb', sig: '6♭' },
+            { letter: 'a', acc: '', major: false, spec: 'C', sig: '无升降' },
+            { letter: 'e', acc: '', major: false, spec: 'G', sig: '1♯' },
+            { letter: 'b', acc: '', major: false, spec: 'D', sig: '2♯' },
+            { letter: 'f', acc: '♯', major: false, spec: 'A', sig: '3♯' },
+            { letter: 'c', acc: '♯', major: false, spec: 'E', sig: '4♯' },
+            { letter: 'g', acc: '♯', major: false, spec: 'B', sig: '5♯' },
+            { letter: 'd', acc: '♯', major: false, spec: 'F#', sig: '6♯' },
+            { letter: 'd', acc: '', major: false, spec: 'F', sig: '1♭' },
+            { letter: 'g', acc: '', major: false, spec: 'Bb', sig: '2♭' },
+            { letter: 'c', acc: '', major: false, spec: 'Eb', sig: '3♭' },
+            { letter: 'f', acc: '', major: false, spec: 'Ab', sig: '4♭' },
+            { letter: 'b', acc: '♭', major: false, spec: 'Db', sig: '5♭' },
+            { letter: 'e', acc: '♭', major: false, spec: 'Gb', sig: '6♭' }
+        ];
+
+        const STAVE_X = 40;
+        const TREBLE_Y = 30;
+        const BASS_Y = 130;
+        const SYSTEM_HEIGHT = 250;
+        const CHORD_LABEL_OFFSET = 240;
+
+        function newMeasure() { return { voices: { S: [], A: [], T: [], B: [] }, chordLabels: [] }; }
+
+        const state = {
+            currentVoice: 'S',
+            currentDuration: 'q',
+            mode: 'note',
+            timbre: 'piano',
+            playSpeed: 100,
+            keyIndex: 0,
+            timeSig: '4/4',
+            endBarType: 'boldDoubleRight',   // 默认末尾为终止小节线
+            measureBarTypes: {},              // 每个小节自定义的小节线样式（索引 -> 类型）
+            caret: null,               // { m, beat }
+            tieStart: null,            // { voice, m, beat }
+            tripletArmed: false,
+            tripletPending: null,      // { m, beat, notes: [] }
+            chordFunc: 'T',
+            chordInv: 'none',
+            checkResults: null,
+            selectedBarline: null,     // measure index
+            selNote: null,             // 选中的音符 { voice, m, beat }（用于等音切换）
+            measures: [newMeasure(), newMeasure(), newMeasure(), newMeasure()],  // 默认 4 小节空白谱
+            ties: [],                  // { voice, m1, b1, m2, b2 }
+            manualBreaks: new Set(),   // measure indices after which to break
+            undoStack: [],
+            user: { name: '', klass: '', teacher: '', lastEdit: null },  // 用户信息 + 最后写作时间
+            ui: { svg: null, systems: [], measureGeom: [] }
+        };
+
+        function measureBeats() { return parseInt(state.timeSig.split('/')[0], 10); }
+        function ensureMeasure(i) { while (state.measures.length <= i) state.measures.push(newMeasure()); }
+
+        function setStatus(msg, isError) {
+            const el = document.getElementById('status');
+            el.textContent = msg;
+            el.className = isError ? 'error' : '';
+        }
+
+        function beatLabel(beat) {
+            const whole = Math.floor(beat) + 1;
+            const frac = Math.round((beat - Math.floor(beat)) * 4) / 4;
+            if (frac === 0) return '第' + whole + '拍';
+            if (frac === 0.25) return '第' + whole + '拍¼';
+            if (frac === 0.5) return '第' + whole + '拍半';
+            if (frac === 0.75) return '第' + whole + '拍¾';
+            return '第' + whole + '拍';
+        }
+
+        // 统一设置写入模式，并同步对应按钮的高亮状态
+        function setMode(mode) {
+            if (!mode) return;
+            state.mode = mode;
+            state.tieStart = null;
+            document.querySelectorAll('.mode-btn').forEach(b => {
+                b.classList.toggle('active', b.dataset.mode === mode);
+            });
+            updateStatus();
+        }
+
+        function updateStatus() {
+            let caret = '未选择';
+            if (state.caret) {
+                caret = '第' + (state.caret.m + 1) + '小节 ' + beatLabel(state.caret.beat);
+            }
+            const tie = state.tieStart ? '（连线起点已选）' : '';
+            setStatus('声部：' + VOICE_NAMES[state.currentVoice] + ' ｜ 时值：' + DUR_LABEL[state.currentDuration] +
+                ' ｜ 模式：' + MODE_NAMES[state.mode] + ' ｜ 光标：' + caret + tie);
+        }
+
+        // ---------- 系统（折行）计算 ----------
+        function computeSystems() {
+            const n = state.measures.length;
+            const systems = [];
+            let start = 0;
+            for (let i = 0; i < n - 1; i++) {
+                if ((i + 1) % 4 === 0 || state.manualBreaks.has(i)) {
+                    systems.push({ start: start, end: i });
+                    start = i + 1;
+                }
+            }
+            systems.push({ start: start, end: n - 1 });
+            return systems;
+        }
+
+        // ---------- 时值拆分（跨小节自动填充） ----------
+        function unitsOfDur(d) { return Math.round(DUR_BEATS[d] * 4); }
+
+        function splitDuration(startM, startBeat, dur) {
+            const beats = measureBeats();
+            const segs = [];
+            let m = startM, b = startBeat;
+            let left = unitsOfDur(dur);
+            while (left > 0) {
+                const cap = Math.round((beats - b) * 4);
+                if (cap <= 0) { m++; b = 0; continue; }
+                const take = Math.min(cap, left);
+                let rem = take;
+                while (rem > 0) {
+                    for (const [d, u] of UNIT_DURS) {
+                        if (u <= rem) {
+                            segs.push({ m: m, beat: b, dur: d });
+                            b += DUR_BEATS[d];
+                            rem -= u;
+                            break;
+                        }
+                    }
+                }
+                left -= take;
+                if (b >= beats) { m++; b = 0; }
+            }
+            return segs;
+        }
+
+        // ---------- 乐谱渲染 ----------
+        function restDuration(dur) { return dur + 'r'; }
+
+        function measureNoteCount(mi) {
+            let n = 0;
+            VOICES.forEach(v => { n = Math.max(n, (state.measures[mi].voices[v] || []).length); });
+            return n;
+        }
+
+        function naturalMeasureWidth(mi) {
+            return 60 + 20 * measureNoteCount(mi);
+        }
+
+        function pitchLetterAcc(pitch) {
+            const m = pitch.match(/^([a-g])([#b]*)\/(\d+)$/);
+            if (!m) return null;
+            let acc = 0;
+            (m[2] || '').split('').forEach(ch => { acc += (ch === '#' ? 1 : -1); });
+            return { letter: m[1], acc: acc };
+        }
+
+        function accValueToSymbol(v) {
+            return v === 0 ? 'n' : (v > 0 ? '#' : 'b');
+        }
+
+        function render() {
+            const container = document.getElementById('score');
+            container.innerHTML = '';
+            playbackCursorEl = null;
+            try {
+                if (!window.Vex || !window.Vex.Flow) { setStatus('❌ 未找到 lib/vexflow-min.js', true); return; }
+                const VF = Vex.Flow;
+                const beats = measureBeats();
+                const gridCount = beats * 4;
+                const keyOpt = KEY_OPTIONS[state.keyIndex];
+                const keySpec = keyOpt.spec;
+                const systems = computeSystems();
+                const width = Math.max(container.clientWidth - 16, 760);
+                const height = systems.length * SYSTEM_HEIGHT + 50;
+
+                // 按内容自然宽度计算所需画布宽度：音符多的小节自动加宽，整体可横向滚动
+                const clefOffset = 72;   // 每行开头谱号+调号+拍号占用的横向空间
+                const availW = width - STAVE_X - 30;
+                let maxNoteArea = 0;
+                systems.forEach(sys => {
+                    let tot = 0;
+                    for (let mi = sys.start; mi <= sys.end; mi++) tot += naturalMeasureWidth(mi);
+                    if (tot > maxNoteArea) maxNoteArea = tot;
+                });
+                const effNoteArea = Math.max(availW - clefOffset, maxNoteArea);
+                const effWidth = STAVE_X + clefOffset + effNoteArea + 30;
+
+                const renderer = new VF.Renderer(container, VF.Renderer.Backends.SVG);
+                renderer.resize(effWidth, height);
+                const ctx = renderer.getContext();
+
+                state.ui.systems = [];
+                state.ui.measureGeom = [];
+                state.ui.width = effWidth;
+                const noteObjs = { S: {}, A: {}, T: {}, B: {} };
+                const tupletsToDraw = [];
+                const beamsToDraw = [];
+
+                systems.forEach((sys, r) => {
+                    const sysTop = r * SYSTEM_HEIGHT + 15;
+                    const sysBottom = r * SYSTEM_HEIGHT + 215;
+                    const sysTrebleY = r * SYSTEM_HEIGHT + TREBLE_Y;
+                    const sysBassY = r * SYSTEM_HEIGHT + BASS_Y;
+                    state.ui.systems.push({ y1: sysTop, y2: sysBottom + 40, measures: [] });
+
+                    // 按内容密度分配每小节音符区宽度（音符越多越宽）
+                    const weights = [];
+                    for (let mi = sys.start; mi <= sys.end; mi++) weights.push(naturalMeasureWidth(mi));
+                    const totalWeight = weights.reduce((a, b) => a + b, 0) || 1;
+                    const noteWidths = weights.map(w => effNoteArea * w / totalWeight);
+
+                    const staves = [];
+                    let x = STAVE_X;
+                    for (let mi = sys.start; mi <= sys.end; mi++) {
+                        const mWidth = noteWidths[mi - sys.start] + (mi === sys.start ? clefOffset : 0);
+                        const treble = new VF.Stave(x, sysTrebleY, mWidth);
+                        const bass = new VF.Stave(x, sysBassY, mWidth);
+                        if (mi === sys.start) {
+                            treble.addClef('treble').addKeySignature(keySpec).addTimeSignature(state.timeSig);
+                            bass.addClef('bass').addKeySignature(keySpec).addTimeSignature(state.timeSig);
+                        }
+                        treble.setBegBarType(VF.Barline.type.NONE).setEndBarType(VF.Barline.type.NONE);
+                        bass.setBegBarType(VF.Barline.type.NONE).setEndBarType(VF.Barline.type.NONE);
+                        staves.push({ mi: mi, treble: treble, bass: bass });
+                        x += mWidth;
+                    }
+
+                    // 先画谱线和连接线
+                    staves.forEach((s, idx) => {
+                        s.treble.setContext(ctx).draw();
+                        s.bass.setContext(ctx).draw();
+                        if (idx === 0) {
+                            new VF.StaveConnector(s.treble, s.bass).setType('brace').setContext(ctx).draw();
+                            new VF.StaveConnector(s.treble, s.bass).setType('singleLeft').setContext(ctx).draw();
+                        }
+                        const isLastMeasure = (s.mi === state.measures.length - 1);
+                        let rightType;
+                        if (isLastMeasure) {
+                            rightType = state.endBarType;
+                        } else if (state.measureBarTypes && state.measureBarTypes[s.mi]) {
+                            rightType = state.measureBarTypes[s.mi];
+                        } else {
+                            rightType = 'singleRight';
+                        }
+                        new VF.StaveConnector(s.treble, s.bass).setType(rightType).setContext(ctx).draw();
+                    });
+
+                    // 再画音符
+                    staves.forEach((s) => {
+                        const mi = s.mi;
+                        const gridTreble = new VF.Voice({ num_beats: beats, beat_value: 4 }).setMode(VF.Voice.Mode.SOFT);
+                        const gridBass = new VF.Voice({ num_beats: beats, beat_value: 4 }).setMode(VF.Voice.Mode.SOFT);
+                        for (let i = 0; i < gridCount; i++) {
+                            gridTreble.addTickable(new VF.GhostNote('16'));
+                            gridBass.addTickable(new VF.GhostNote('16'));
+                        }
+                        const realVoices = {};
+                        const tupletGroups = {};
+                        const beamNotes = { S: [], A: [], T: [], B: [] };
+
+                        // 预计算本小节各谱表需要的临时升降号（遵循调号与同小节前后变音规则）
+                        const keyAccMap = keySignatureAccidentals();
+                        const accNeeded = { treble: {}, bass: {} };
+                        ['treble', 'bass'].forEach(staff => {
+                            const vs = staff === 'treble' ? ['S', 'A'] : ['T', 'B'];
+                            const accState = {};
+                            const events = [];
+                            vs.forEach(v => state.measures[mi].voices[v].forEach(nt => events.push({ v, nt })));
+                            events.sort((a, b) => (a.nt.beat - b.nt.beat) || (vs.indexOf(a.v) - vs.indexOf(b.v)));
+                            events.forEach(({ v, nt }) => {
+                                if (nt.rest) return;
+                                const la = pitchLetterAcc(nt.pitch);
+                                if (!la) return;
+                                const expected = keyAccMap[la.letter] || 0;
+                                const prev = accState[la.letter];
+                                let symbol = null;
+                                if (la.acc === expected) {
+                                    if (prev !== undefined && prev !== expected) symbol = accValueToSymbol(la.acc);
+                                } else {
+                                    symbol = accValueToSymbol(la.acc);
+                                }
+                                accNeeded[staff][v + ':' + nt.beat] = symbol;
+                                accState[la.letter] = la.acc;
+                            });
+                        });
+
+                        VOICES.forEach(v => {
+                            const voice = new VF.Voice({ num_beats: beats, beat_value: 4 }).setMode(VF.Voice.Mode.SOFT);
+                            const isTreble = (v === 'S' || v === 'A');
+                            const clef = isTreble ? 'treble' : 'bass';
+                            const notes = state.measures[mi].voices[v].slice().sort((a, b) => {
+                                if (a.beat !== b.beat) return a.beat - b.beat;
+                                return (a.tuplet ? a.tuplet.index : 0) - (b.tuplet ? b.tuplet.index : 0);
+                            });
+                            notes.forEach(nt => {
+                                let note;
+                                if (nt.rest) {
+                                    const key = clef === 'treble' ? 'b/4' : 'd/3';
+                                    note = new VF.StaveNote({ keys: [key], duration: restDuration(nt.dur), clef });
+                                } else {
+                                    note = new VF.StaveNote({ keys: [nt.pitch], duration: nt.dur, clef });
+                                    // 根据调号与同小节前后变音情况，决定是否显示临时升降号
+                                    const staff = isTreble ? 'treble' : 'bass';
+                                    const symbol = accNeeded[staff][v + ':' + nt.beat];
+                                    if (symbol) note.addAccidental(0, new VF.Accidental(symbol));
+                                    const stem = (v === 'S' || v === 'T') ? VF.Stem.UP : VF.Stem.DOWN;
+                                    note.setStemDirection(stem);
+                                    note.setStyle({ fillStyle: VOICE_COLORS[v], strokeStyle: VOICE_COLORS[v] });
+                                    if (!nt.tuplet) beamNotes[v].push(note);
+                                }
+                                voice.addTickable(note);
+                                if (nt.tuplet) {
+                                    if (!tupletGroups[nt.tuplet.id]) tupletGroups[nt.tuplet.id] = [];
+                                    tupletGroups[nt.tuplet.id].push(note);
+                                } else if (!nt.rest) {
+                                    noteObjs[v][mi + ':' + nt.beat] = note;
+                                }
+                            });
+                            realVoices[v] = voice;
+                        });
+                        Object.keys(tupletGroups).forEach(gid => {
+                            const group = tupletGroups[gid];
+                            if (group.length === 3) {
+                                tupletsToDraw.push(new VF.Tuplet(group, { ratioed: true, num_notes: 3, notes_occupied: 2 }));
+                            }
+                        });
+                        VOICES.forEach(v => {
+                            if (beamNotes[v].length > 1) {
+                                const dir = (v === 'S' || v === 'T') ? VF.Stem.UP : VF.Stem.DOWN;
+                                beamsToDraw.push(...VF.Beam.generateBeams(beamNotes[v], { stem_direction: dir }));
+                            }
+                        });
+
+                        const justify = s.treble.getNoteEndX() - s.treble.getNoteStartX() - 6;
+                        const formatter = new VF.Formatter();
+                        formatter
+                            .joinVoices([realVoices.S, realVoices.A])
+                            .joinVoices([realVoices.T, realVoices.B]);
+                        formatter.format([realVoices.S, realVoices.A, realVoices.T, realVoices.B, gridTreble, gridBass], justify);
+
+                        realVoices.S.draw(ctx, s.treble);
+                        realVoices.A.draw(ctx, s.treble);
+                        realVoices.T.draw(ctx, s.bass);
+                        realVoices.B.draw(ctx, s.bass);
+                        gridTreble.draw(ctx, s.treble);
+                        gridBass.draw(ctx, s.bass);
+
+                        const beatXs = gridTreble.getTickables().map(t => t.getAbsoluteX());
+                        state.ui.measureGeom[mi] = {
+                            x1: s.treble.getX(),
+                            x2: s.treble.getX() + s.treble.getWidth(),
+                            beatXs: beatXs,
+                            sysTop: sysTop,
+                            sysBottom: sysBottom,
+                            chordY: sysBottom + 25
+                        };
+                        state.ui.systems[r].measures.push(mi);
+                    });
+                });
+
+                // 连线（延音线）
+                state.ties = state.ties.filter(t =>
+                    noteObjs[t.voice] && noteObjs[t.voice][t.m1 + ':' + t.b1] && noteObjs[t.voice][t.m2 + ':' + t.b2]);
+                state.ties.forEach(t => {
+                    const a = noteObjs[t.voice][t.m1 + ':' + t.b1];
+                    const b = noteObjs[t.voice][t.m2 + ':' + t.b2];
+                    new VF.StaveTie({ first_note: a, last_note: b, first_indices: [0], last_indices: [0] }).setContext(ctx).draw();
+                });
+
+                tupletsToDraw.forEach(t => t.setContext(ctx).draw());
+                beamsToDraw.forEach(b => b.setContext(ctx).draw());
+
+                if (state.selectedBarline != null && state.selectedBarline >= state.measures.length) {
+                    state.selectedBarline = null;
+                }
+                const svg = container.querySelector('svg');
+                state.ui.svg = svg;
+                state.ui.noteObjs = noteObjs;
+                drawCaret();
+                drawSelection();
+                drawChordBaselines(svg, systems.length);
+                drawKeyLabel(svg);
+                drawChordLabels(svg);
+                drawCheckResults(svg);
+                updateStatus();
+                scrollToCaret();
+            } catch (e) {
+                setStatus('❌ 渲染出错：' + e.message, true);
+                console.error(e);
+            }
+        }
+
+        function drawCaret() {
+            const svg = state.ui.svg;
+            if (!svg) return;
+            let line = svg.querySelector('.caret');
+            if (line) line.remove();
+            if (!state.caret) return;
+            const g = state.ui.measureGeom[state.caret.m];
+            if (!g) return;
+            const idx = Math.round(state.caret.beat * 4);
+            const x = g.beatXs[Math.min(idx, g.beatXs.length - 1)];
+            line = document.createElementNS('http://www.w3.org/2000/svg', 'line');
+            line.setAttribute('class', 'caret');
+            line.setAttribute('x1', x); line.setAttribute('x2', x);
+            line.setAttribute('y1', g.sysTop); line.setAttribute('y2', g.sysBottom);
+            line.setAttribute('stroke', '#e91e63');
+            line.setAttribute('stroke-width', '3');
+            line.setAttribute('stroke-dasharray', '4 3');
+            svg.appendChild(line);
+        }
+
+        function scrollToSvgPosition(x, y, force) {
+            const container = document.getElementById('score');
+            if (!container) return;
+            const minX = container.scrollLeft;
+            const maxX = container.scrollLeft + container.clientWidth;
+            if (force || x < minX + 40 || x > maxX - 40) {
+                container.scrollLeft = Math.max(0, x - container.clientWidth / 2);
+            }
+            const containerTop = container.getBoundingClientRect().top + window.scrollY;
+            const pageY = containerTop + y;
+            const vMin = window.scrollY;
+            const vMax = window.scrollY + window.innerHeight;
+            if (force || pageY < vMin + 60 || pageY > vMax - 60) {
+                // 立即定位（不做平滑动画），以光标位置为主显示
+                window.scrollTo(0, Math.max(0, pageY - window.innerHeight / 2));
+            }
+        }
+
+        let lastCaretScrollKey = null;
+        function scrollToCaret() {
+            if (!state.caret) return;
+            const key = state.caret.m + ':' + Math.round(state.caret.beat * 4);
+            if (key === lastCaretScrollKey) return;   // 光标没移动就不滚动，避免每次渲染都跳动
+            lastCaretScrollKey = key;
+            const g = state.ui.measureGeom[state.caret.m];
+            if (!g) return;
+            const idx = Math.min(Math.round(state.caret.beat * 4), g.beatXs.length - 1);
+            const x = g.beatXs[idx];
+            scrollToSvgPosition(x, (g.sysTop + g.sysBottom) / 2, true);
+        }
+
+        function drawSelection() {
+            const svg = state.ui.svg;
+            if (!svg) return;
+            let el = svg.querySelector('.barline-select');
+            if (el) el.remove();
+            // 小节线选中（橙色高亮）
+            if (state.selectedBarline != null) {
+                const g = state.ui.measureGeom[state.selectedBarline];
+                if (g) {
+                    const x = g.x2;
+                    const line = document.createElementNS('http://www.w3.org/2000/svg', 'line');
+                    line.setAttribute('class', 'barline-select');
+                    line.setAttribute('x1', x); line.setAttribute('x2', x);
+                    line.setAttribute('y1', g.sysTop); line.setAttribute('y2', g.sysBottom);
+                    line.setAttribute('stroke', '#ff9800');
+                    line.setAttribute('stroke-width', '5');
+                    line.setAttribute('opacity', '0.85');
+                    svg.appendChild(line);
+                }
+            }
+            // 音符选中（紫色框）
+            const old = svg.querySelector('.note-select');
+            if (old) old.remove();
+            if (!state.selNote || !state.ui.noteObjs) return;
+            const key = state.selNote.m + ':' + state.selNote.beat;
+            const note = state.ui.noteObjs[state.selNote.voice] && state.ui.noteObjs[state.selNote.voice][key];
+            if (!note) return;
+            try {
+                const bb = note.getBoundingBox();
+                const rect = document.createElementNS('http://www.w3.org/2000/svg', 'rect');
+                rect.setAttribute('class', 'note-select');
+                rect.setAttribute('x', bb.x - 4);
+                rect.setAttribute('y', bb.y - 4);
+                rect.setAttribute('width', bb.w + 8);
+                rect.setAttribute('height', bb.h + 8);
+                rect.setAttribute('rx', '3');
+                rect.setAttribute('fill', 'none');
+                rect.setAttribute('stroke', '#7b1fa2');
+                rect.setAttribute('stroke-width', '2.5');
+                rect.setAttribute('stroke-dasharray', '5 3');
+                svg.appendChild(rect);
+            } catch (e) { /* 忽略 */ }
+        }
+
+        function drawChordBaselines(svg, sysCount) {
+            const NS = 'http://www.w3.org/2000/svg';
+            const x1 = STAVE_X;
+            const x2 = state.ui.width - 20;
+            for (let r = 0; r < sysCount; r++) {
+                const y = r * SYSTEM_HEIGHT + CHORD_LABEL_OFFSET;
+                const line = document.createElementNS(NS, 'line');
+                line.setAttribute('x1', x1); line.setAttribute('x2', x2);
+                line.setAttribute('y1', y); line.setAttribute('y2', y);
+                line.setAttribute('stroke', '#cfd8dc');
+                line.setAttribute('stroke-width', '1');
+                line.setAttribute('stroke-dasharray', '3 4');
+                svg.appendChild(line);
+            }
+        }
+
+        function drawKeyLabel(svg) {
+            const NS = 'http://www.w3.org/2000/svg';
+            const key = KEY_OPTIONS[state.keyIndex];
+            const y = CHORD_LABEL_OFFSET;
+            const x = STAVE_X + 4;
+            const w = 46, h = 30;
+            const rect = document.createElementNS(NS, 'rect');
+            rect.setAttribute('x', x); rect.setAttribute('y', y - h / 2);
+            rect.setAttribute('width', w); rect.setAttribute('height', h);
+            rect.setAttribute('rx', '4');
+            rect.setAttribute('fill', '#ffffff');
+            rect.setAttribute('stroke', '#37474f');
+            rect.setAttribute('stroke-width', '1.5');
+            svg.appendChild(rect);
+
+            const lx = x + w / 2 + 2;
+            const ly = y + 6;
+            const letter = document.createElementNS(NS, 'text');
+            letter.setAttribute('x', lx); letter.setAttribute('y', ly);
+            letter.setAttribute('text-anchor', 'middle');
+            letter.setAttribute('font-size', '18');
+            letter.setAttribute('font-weight', 'bold');
+            letter.setAttribute('fill', '#1a1a1a');
+            letter.textContent = key.letter;
+            svg.appendChild(letter);
+
+            if (key.acc) {
+                const acc = document.createElementNS(NS, 'text');
+                acc.setAttribute('x', lx - 9); acc.setAttribute('y', ly - 12);
+                acc.setAttribute('text-anchor', 'middle');
+                acc.setAttribute('font-size', '13');
+                acc.setAttribute('fill', '#1a1a1a');
+                acc.textContent = key.acc;
+                svg.appendChild(acc);
+            }
+        }
+
+        // ---------- 和弦标记与检查结果绘制 ----------
+        const SVG_NS = 'http://www.w3.org/2000/svg';
+        function svgText(svg, str, x, y, anchor, size, fill, weight) {
+            const t = document.createElementNS(SVG_NS, 'text');
+            t.setAttribute('x', x);
+            t.setAttribute('y', y);
+            t.setAttribute('text-anchor', anchor || 'middle');
+            t.setAttribute('font-size', size || 13);
+            if (fill) t.setAttribute('fill', fill);
+            if (weight) t.setAttribute('font-weight', weight);
+            t.textContent = str;
+            svg.appendChild(t);
+            return t;
+        }
+
+        function drawChordLabelText(svg, cx, y, func, inv) {
+            const spec = INV_OPTIONS.find(o => o.id === inv) || INV_OPTIONS[0];
+            const letterW = 11, digitW = 8;
+            const hasDigit = spec.figures.length > 0;
+            const lx = cx - (hasDigit ? (digitW / 2 + 1) : 0);
+            svgText(svg, func, lx, y + 5, 'middle', 15, '#111111', 'bold');
+            if (hasDigit) {
+                const dx = lx + letterW / 2 + 2;
+                spec.figures.forEach(([num, pos]) => {
+                    const yy = pos === 'sup' ? y - 6 : y + 9;
+                    svgText(svg, num, dx, yy, 'middle', 11, '#111111');
+                });
+            }
+        }
+
+        function drawChordLabels(svg) {
+            state.measures.forEach((measure, mi) => {
+                measure.chordLabels.forEach(lbl => {
+                    const g = state.ui.measureGeom[mi];
+                    if (!g) return;
+                    const idx = Math.round(lbl.beat * 4);
+                    const x = g.beatXs[Math.min(idx, g.beatXs.length - 1)];
+                    drawChordLabelText(svg, x, g.chordY, lbl.func, lbl.inv);
+                });
+            });
+        }
+
+        function drawCheckResults(svg) {
+            if (!state.checkResults) return;
+            state.checkResults.forEach(r => {
+                const g = state.ui.measureGeom[r.m];
+                if (!g) return;
+                const idx = Math.round(r.beat * 4);
+                const x = g.beatXs[Math.min(idx, g.beatXs.length - 1)];
+                const y = g.chordY + 20;
+                if (r.ok) svgText(svg, '✓', x, y + 12, 'middle', 16, '#2e7d32', 'bold');
+                else svgText(svg, '✗', x, y + 12, 'middle', 16, '#c62828', 'bold');
+            });
+        }
+
+        // ---------- 数据操作 ----------
+        function snapshot() {
+            state.checkResults = null;
+            state.undoStack.push({
+                measures: JSON.parse(JSON.stringify(state.measures)),
+                ties: JSON.parse(JSON.stringify(state.ties)),
+                timeSig: state.timeSig
+            });
+            if (state.undoStack.length > 50) state.undoStack.shift();
+        }
+
+        function noteSpan(nt) {
+            const d = DUR_BEATS[nt.dur];
+            if (nt.tuplet) return [nt.beat, nt.beat + d * 2];
+            return [nt.beat, nt.beat + d];
+        }
+
+        function noteOverlaps(nt, start, durBeats) {
+            const span = noteSpan(nt);
+            return span[0] < start + durBeats && start < span[1];
+        }
+
+        function findNoteAt(m, beat) {
+            const voice = state.currentVoice;
+            return state.measures[m].voices[voice].find(nt => {
+                const span = noteSpan(nt);
+                return span[0] <= beat && beat < span[1];
+            }) || null;
+        }
+
+        // 在谱面点击位置(小节, 拍位)查找音符：优先当前声部，其次其他声部
+        function findNoteAtClick(m, beat) {
+            const order = [state.currentVoice].concat(VOICES.filter(v => v !== state.currentVoice));
+            for (const v of order) {
+                const list = state.measures[m].voices[v] || [];
+                const nt = list.find(n => {
+                    if (n.rest) return false;
+                    const span = noteSpan(n);
+                    return span[0] <= beat + 0.01 && beat < span[1];
+                });
+                if (nt) return { voice: v, nt };
+            }
+            return null;
+        }
+
+        // 音名的可读标签（如 c#/4 → C♯4）
+        function pitchLabel(pitch) {
+            const m = pitch.match(/^([a-g])([#b]*)\/(\d+)$/);
+            if (!m) return pitch;
+            const acc = (m[2] || '').replace(/#/g, '♯').replace(/b/g, '♭');
+            return m[1].toUpperCase() + acc + m[3];
+        }
+
+        function addTie(voice, m1, b1, m2, b2) {
+            const exists = state.ties.some(t => t.voice === voice && t.m1 === m1 && t.b1 === b1 && t.m2 === m2 && t.b2 === b2);
+            if (!exists) state.ties.push({ voice: voice, m1: m1, b1: b1, m2: m2, b2: b2 });
+        }
+
+        function toggleTie(voice, m1, b1, m2, b2) {
+            const idx = state.ties.findIndex(t => t.voice === voice &&
+                ((t.m1 === m1 && t.b1 === b1 && t.m2 === m2 && t.b2 === b2) ||
+                    (t.m1 === m2 && t.b1 === b2 && t.m2 === m1 && t.b2 === b1)));
+            if (idx >= 0) state.ties.splice(idx, 1);
+            else state.ties.push({ voice: voice, m1: m1, b1: b1, m2: m2, b2: b2 });
+        }
+
+        function insertNote(pitch) {
+            if (!state.caret) { setStatus('请先点击谱面选择一个拍位', true); return; }
+            snapshot();
+            const v = state.currentVoice;
+            const segs = splitDuration(state.caret.m, state.caret.beat, state.currentDuration);
+            segs.forEach(seg => {
+                ensureMeasure(seg.m);
+                const db = DUR_BEATS[seg.dur];
+                state.measures[seg.m].voices[v] = state.measures[seg.m].voices[v].filter(nt =>
+                    !noteOverlaps(nt, seg.beat, db));
+            });
+            segs.forEach(seg => {
+                state.measures[seg.m].voices[v].push({ beat: seg.beat, dur: seg.dur, pitch: pitch, rest: false });
+            });
+            for (let i = 0; i < segs.length - 1; i++) {
+                addTie(v, segs[i].m, segs[i].beat, segs[i + 1].m, segs[i + 1].beat);
+            }
+            const last = segs[segs.length - 1];
+            let nm = last.m, nb = last.beat + DUR_BEATS[last.dur];
+            if (nb >= measureBeats()) { nm++; nb = 0; }
+            // 不提前创建空白小节：下一小节不存在时置空光标，提示用「加小节」
+            if (nm >= state.measures.length) {
+                state.caret = null;
+                setStatus('本小节已写满，请点「加小节」添加新小节', true);
+            } else {
+                state.caret = { m: nm, beat: nb };
+            }
+            render();
+        }
+
+        function insertRestAt(m, beat) {
+            snapshot();
+            const v = state.currentVoice;
+            const segs = splitDuration(m, beat, state.currentDuration);
+            segs.forEach(seg => {
+                ensureMeasure(seg.m);
+                const db = DUR_BEATS[seg.dur];
+                state.measures[seg.m].voices[v] = state.measures[seg.m].voices[v].filter(nt =>
+                    !noteOverlaps(nt, seg.beat, db));
+                state.measures[seg.m].voices[v].push({ beat: seg.beat, dur: seg.dur, rest: true });
+            });
+            const last = segs[segs.length - 1];
+            let nm = last.m, nb = last.beat + DUR_BEATS[last.dur];
+            if (nb >= measureBeats()) { nm++; nb = 0; }
+            if (nm >= state.measures.length) {
+                state.caret = null;
+                setStatus('本小节已写满，请点「加小节」添加新小节', true);
+            } else {
+                state.caret = { m: nm, beat: nb };
+            }
+            render();
+        }
+
+        function deleteAt(m, beat) {
+            snapshot();
+            const v = state.currentVoice;
+            state.measures[m].voices[v] = state.measures[m].voices[v].filter(nt => {
+                const span = noteSpan(nt);
+                return !(span[0] <= beat && beat < span[1]);
+            });
+            state.measures[m].chordLabels = state.measures[m].chordLabels.filter(l => l.beat !== beat);
+            render();
+        }
+
+        function handleTieClick(m, beat) {
+            const v = state.currentVoice;
+            const nt = findNoteAt(m, beat);
+            if (!nt) { setStatus('该拍位没有音符，无法连线', true); return; }
+            if (nt.tuplet) { setStatus('三连音暂不支持连线', true); return; }
+            if (!state.tieStart) {
+                state.tieStart = { voice: v, m: m, beat: nt.beat };
+                setStatus('连线起点已选：' + VOICE_NAMES[v] + ' 第' + (m + 1) + '小节 ' + beatLabel(nt.beat) + '，请再点一个同声部音符');
+                return;
+            }
+            if (state.tieStart.voice !== v) {
+                setStatus('连线两端必须在同一声部', true);
+                state.tieStart = null;
+                return;
+            }
+            const a = state.tieStart;
+            const b = { voice: v, m: m, beat: nt.beat };
+            let first = a, second = b;
+            if (a.m > b.m || (a.m === b.m && a.beat > b.beat)) { first = b; second = a; }
+            if (first.m === second.m && first.beat === second.beat) {
+                state.tieStart = null;
+                updateStatus();
+                return;
+            }
+            const nf = findNoteAt(first.m, first.beat);
+            const ns = findNoteAt(second.m, second.beat);
+            if (nf && ns && nf.pitch !== ns.pitch) {
+                setStatus('延音线两端需同音高', true);
+                state.tieStart = null;
+                return;
+            }
+            snapshot();
+            toggleTie(v, first.m, first.beat, second.m, second.beat);
+            state.tieStart = null;
+            render();
+        }
+
+        function commitTriplet() {
+            const p = state.tripletPending;
+            const v = state.currentVoice;
+            const base = state.currentDuration;
+            const total = DUR_BEATS[base] * 2;
+            if (p.beat + total > measureBeats()) {
+                setStatus('三连音超出本小节，无法完成', true);
+                state.tripletPending = null;
+                return;
+            }
+            snapshot();
+            ensureMeasure(p.m);
+            state.measures[p.m].voices[v] = state.measures[p.m].voices[v].filter(nt =>
+                !noteOverlaps(nt, p.beat, total));
+            const gid = ++tupletSeq;
+            p.notes.forEach((pitch, i) => {
+                state.measures[p.m].voices[v].push({ beat: p.beat, dur: base, pitch: pitch, rest: false, tuplet: { id: gid, index: i } });
+            });
+            let nm = p.m, nb = p.beat + total;
+            if (nb >= measureBeats()) { nm++; nb = 0; }
+            if (nm >= state.measures.length) {
+                state.caret = null;
+                setStatus('本小节已写满，请点「加小节」添加新小节', true);
+            } else {
+                state.caret = { m: nm, beat: nb };
+            }
+            state.tripletPending = null;
+            state.tripletArmed = false;
+            const btn = document.getElementById('triplet-btn');
+            if (btn) btn.classList.remove('active');
+            render();
+        }
+
+        function placeChordLabel(m, beat) {
+            snapshot();
+            ensureMeasure(m);
+            const func = state.chordFunc;
+            const inv = (func === 'K') ? '64' : state.chordInv;
+            state.measures[m].chordLabels = state.measures[m].chordLabels.filter(l => l.beat !== beat);
+            state.measures[m].chordLabels.push({ beat: beat, func: func, inv: inv });
+            render();
+        }
+
+        function undo() {
+            if (!state.undoStack.length) { setStatus('没有可撤销的操作', true); return; }
+            const snap = state.undoStack.pop();
+            state.measures = snap.measures;
+            state.ties = snap.ties;
+            state.timeSig = snap.timeSig;
+            document.getElementById('time-select').value = snap.timeSig;
+            state.caret = null;
+            state.tieStart = null;
+            state.selectedBarline = null;
+            render();
+        }
+
+        // 把乐谱与练习状态恢复到初始（4 小节空白谱、默认设置）。不含确认框。
+        function resetPractice() {
+            state.measures = [newMeasure(), newMeasure(), newMeasure(), newMeasure()];
+            state.ties = [];
+            state.manualBreaks.clear();
+            state.measureBarTypes = {};
+            state.caret = null;
+            state.tieStart = null;
+            state.selectedBarline = null;
+            state.tripletArmed = false;
+            state.tripletPending = null;
+            state.checkResults = null;
+            state.undoStack = [];
+            state.chordFunc = KEY_OPTIONS[state.keyIndex].major ? 'T' : 't';
+            state.chordInv = 'none';
+            state.selNote = null;
+            document.getElementById('topic-input').value = '';
+            autoGrowTopic();
+            buildChordFuncButtons();
+            render();
+        }
+
+        // 清空：恢复到初始状态（4 小节空白谱、默认设置），用于下一个练习
+        function clearAll() {
+            if (!confirm('确定清空当前练习，恢复到初始状态吗？')) return;
+            resetPractice();
+            setStatus('已清空，可开始新的练习');
+        }
+
+        // 修改用户信息：相当于清空练习，防止学生改个名字盗用他人做题成果
+        function changeUser() {
+            if (!confirm('修改用户信息将清空当前练习内容，且无法恢复。\n\n确定要修改吗？')) return;
+            resetPractice();
+            openUserModal(false);
+            setStatus('已清空练习，请重新填写用户信息', true);
+        }
+
+        // ---------- 用户信息 ----------
+        const USER_STORAGE_KEY = 'harmony_practice_user';
+
+        function loadUser() {
+            try {
+                const raw = localStorage.getItem(USER_STORAGE_KEY);
+                if (raw) state.user = Object.assign(state.user, JSON.parse(raw));
+            } catch (e) { /* 忽略 */ }
+        }
+
+        function saveUser() {
+            try { localStorage.setItem(USER_STORAGE_KEY, JSON.stringify(state.user)); } catch (e) { }
+        }
+
+        function hasUserInfo() {
+            return !!(state.user.name && state.user.name.trim());
+        }
+
+        // 练习操作门禁：未填写用户信息则不允许操作谱面/琴键
+        function requireUser() {
+            if (hasUserInfo()) return true;
+            openUserModal(true);
+            setStatus('请先填写用户信息，再开始练习', true);
+            return false;
+        }
+
+        function refreshUserBar() {
+            const el = document.getElementById('user-info-text');
+            if (!el) return;
+            if (hasUserInfo()) {
+                let s = '👤 ' + state.user.name;
+                if (state.user.klass) s += '（' + state.user.klass + '）';
+                if (state.user.teacher) s += ' · 指导教师：' + state.user.teacher;
+                el.textContent = s;
+            } else {
+                el.textContent = '👤 未填写用户信息（请先填写）';
+            }
+        }
+
+        function openUserModal(required) {
+            const modal = document.getElementById('user-modal');
+            modal.dataset.required = required ? '1' : '0';
+            document.getElementById('um-name').value = state.user.name || '';
+            document.getElementById('um-class').value = state.user.klass || '';
+            document.getElementById('um-teacher').value = state.user.teacher || '';
+            document.getElementById('user-modal-error').textContent = '';
+            modal.classList.remove('hidden');
+        }
+
+        function closeUserModal() {
+            const modal = document.getElementById('user-modal');
+            modal.classList.add('hidden');
+            // 如果是"必须填写"模式且仍未填写，则弹出提示（不能进入练习）
+            if (modal.dataset.required === '1' && !hasUserInfo()) {
+                setStatus('请先填写姓名 / 学号再开始练习', true);
+            }
+        }
+
+        function saveUserFromModal() {
+            const name = document.getElementById('um-name').value.trim();
+            const klass = document.getElementById('um-class').value.trim();
+            const teacher = document.getElementById('um-teacher').value.trim();
+            if (!name) {
+                document.getElementById('user-modal-error').textContent = '请填写姓名 / 学号';
+                return;
+            }
+            state.user.name = name;
+            state.user.klass = klass;
+            state.user.teacher = teacher;
+            saveUser();
+            refreshUserBar();
+            const modal = document.getElementById('user-modal');
+            modal.classList.add('hidden');
+            setStatus('用户信息已保存，可以开始练习');
+        }
+
+        // 记录/更新最后一次写作时间
+        function touchLastEdit() {
+            state.user.lastEdit = new Date().toISOString();
+            saveUser();
+        }
+
+        function formatDateTime(iso) {
+            if (!iso) return '—';
+            const d = new Date(iso);
+            const p = n => String(n).padStart(2, '0');
+            return d.getFullYear() + '-' + p(d.getMonth() + 1) + '-' + p(d.getDate()) +
+                ' ' + p(d.getHours()) + ':' + p(d.getMinutes());
+        }
+
+        // canvas 文本自动折行（按像素宽度），返回绘制后的下一行 y
+        function wrapCanvasText(ctx, text, x, y, maxWidth, lineHeight) {
+            const chars = String(text).split('');
+            let line = '';
+            let ly = y;
+            for (let i = 0; i < chars.length; i++) {
+                const test = line + chars[i];
+                if (ctx.measureText(test).width > maxWidth && line !== '') {
+                    ctx.fillText(line, x, ly);
+                    line = chars[i];
+                    ly += lineHeight;
+                } else {
+                    line = test;
+                }
+            }
+            if (line) ctx.fillText(line, x, ly);
+            return ly + lineHeight;
+        }
+
+        // ---------- 导出作业（图片 / PDF） ----------
+        // 表头用 canvas 绘制，谱面用 SVG 转图片绘制，合成一张含用户信息 + 完成时间的 PNG
+        function exportAsImage() {
+            if (!hasUserInfo()) { openUserModal(true); setStatus('请先填写用户信息再导出', true); return; }
+            touchLastEdit();
+            const mainSvg = document.getElementById('score').querySelector('svg');
+            if (!mainSvg) { setStatus('导出失败：未找到乐谱', true); return; }
+
+            const svgW = mainSvg.width.baseVal.value || state.ui.width || 800;
+            const svgH = mainSvg.height.baseVal.value || 300;
+            const pad = 24, scale = 2;
+            const maxTextW = svgW;          // 文本最大宽度
+
+            // 表头文字内容
+            const key = KEY_OPTIONS[state.keyIndex];
+            const keyName = key.letter + key.acc + (key.major ? ' 大调' : ' 小调');
+            const topic = (document.getElementById('topic-input').value || '').trim() || '（未填写题目）';
+            const t = formatDateTime(state.user.lastEdit);
+
+            // 先用离屏 canvas 估算表头高度（含题目折行）
+            const probe = document.createElement('canvas').getContext('2d');
+            probe.font = '13px -apple-system,PingFang SC,Microsoft YaHei,sans-serif';
+            const topicLines = Math.max(1, Math.ceil(probe.measureText(topic).width / maxTextW));
+            const headH = 96 + topicLines * 20;
+
+            const canvasW = svgW + pad * 2;
+            const canvasH = headH + svgH + pad * 2;
+
+            const canvas = document.createElement('canvas');
+            canvas.width = canvasW * scale;
+            canvas.height = canvasH * scale;
+            const ctx = canvas.getContext('2d');
+            ctx.scale(scale, scale);
+            ctx.fillStyle = '#fff';
+            ctx.fillRect(0, 0, canvasW, canvasH);
+
+            ctx.fillStyle = '#6a1b9a';
+            ctx.font = 'bold 20px -apple-system,PingFang SC,Microsoft YaHei,sans-serif';
+            ctx.fillText('四部和声写作作业', pad, pad + 24);
+            ctx.fillStyle = '#555';
+            ctx.font = '13px -apple-system,PingFang SC,Microsoft YaHei,sans-serif';
+            let ly = pad + 54;
+            ctx.fillText('姓名/学号：' + state.user.name +
+                (state.user.teacher ? '    指导教师：' + state.user.teacher : '') +
+                (state.user.klass ? '    学院/班级：' + state.user.klass : ''), pad, ly); ly += 20;
+            // 题目按宽度自动折行
+            ly = wrapCanvasText(ctx, '题目：' + topic, pad, ly, maxTextW, 20);
+            ctx.fillText('调式调性：' + keyName + '    拍号：' + state.timeSig + '    完成时间：' + t, pad, ly); ly += 14;
+            ctx.strokeStyle = '#7b1fa2'; ctx.lineWidth = 1.5;
+            ctx.beginPath(); ctx.moveTo(pad, ly); ctx.lineTo(canvasW - pad, ly); ctx.stroke();
+
+            // 谱面：SVG -> 图片
+            const svgData = new XMLSerializer().serializeToString(mainSvg);
+            const svgBlob = new Blob([svgData], { type: 'image/svg+xml;charset=utf-8' });
+            const url = URL.createObjectURL(svgBlob);
+            const img = new Image();
+            img.onload = () => {
+                ctx.drawImage(img, pad, headH + 10, svgW, svgH);
+                URL.revokeObjectURL(url);
+                canvas.toBlob(blob => {
+                    const a = document.createElement('a');
+                    const fname = (state.user.name || '作业').replace(/[\\/:*?"<>|]/g, '_');
+                    a.href = URL.createObjectURL(blob);
+                    a.download = '和声作业_' + fname + '_' + Date.now() + '.png';
+                    a.click();
+                    setTimeout(() => URL.revokeObjectURL(a.href), 3000);
+                    setStatus('✅ 已导出图片（含用户信息与完成时间）');
+                }, 'image/png');
+            };
+            img.onerror = () => { setStatus('导出图片失败（可改试 PDF）', true); };
+            img.src = url;
+        }
+
+        function exportAsPdf() {
+            if (!hasUserInfo()) { openUserModal(true); setStatus('请先填写用户信息再导出', true); return; }
+            touchLastEdit();
+            buildPrintStage();       // 把作业内容填到打印专用容器
+            window.print();          // 浏览器打印对话框 → 另存为 PDF
+            setStatus('已打开打印窗口，请在"目标"中选择"另存为 PDF"');
+        }
+
+        // 构建打印专用内容（含表头 + 乐谱），仅供 window.print 使用
+        function buildPrintStage() {
+            const stage = document.getElementById('export-stage');
+            const key = KEY_OPTIONS[state.keyIndex];
+            const keyName = key.letter + key.acc + (key.major ? ' 大调' : ' 小调');
+            const topic = (document.getElementById('topic-input').value || '').trim() || '（未填写题目）';
+            const t = formatDateTime(state.user.lastEdit);
+            const teacher = state.user.teacher ? '<b>指导教师：</b>' + state.user.teacher + '　' : '';
+            const klass = state.user.klass ? '<b>学院/班级：</b>' + state.user.klass + '　' : '';
+            const svg = document.getElementById('score').querySelector('svg');
+            const svgHtml = svg ? svg.outerHTML : '';
+            stage.innerHTML =
+                '<div class="print-article">' +
+                '<h1>四部和声写作作业</h1>' +
+                '<p class="meta"><b>姓名/学号：</b>' + state.user.name + '　' + teacher + klass + '</p>' +
+                '<p class="meta"><b>题目：</b>' + topic + '</p>' +
+                '<p class="meta"><b>调式调性：</b>' + keyName + '　<b>拍号：</b>' + state.timeSig +
+                '　<b>完成时间：</b>' + t + '</p>' +
+                '<div class="score-hold">' + svgHtml + '</div>' +
+                '</div>';
+        }
+
+        function addMeasure() {
+            snapshot();
+            state.measures.push(newMeasure());
+            render();
+        }
+
+        function deleteMeasure() {
+            if (state.measures.length <= 1) { setStatus('至少保留一个小节', true); return; }
+            snapshot();
+            const removed = state.measures.length - 1;
+            state.measures.pop();
+            state.ties = state.ties.filter(t => t.m1 !== removed && t.m2 !== removed);
+            state.manualBreaks.delete(removed);
+            if (state.measureBarTypes) delete state.measureBarTypes[removed];
+            if (state.caret && state.caret.m >= state.measures.length) state.caret = null;
+            if (state.selNote && state.selNote.m >= state.measures.length) state.selNote = null;
+            if (state.selectedBarline != null && state.selectedBarline >= state.measures.length) state.selectedBarline = null;
+            render();
+        }
+
+        // 判断某小节是否为空（四声部均无音符、无和弦标记）
+        function isMeasureEmpty(i) {
+            const m = state.measures[i];
+            if (!m) return true;
+            const hasNote = VOICES.some(v => (m.voices[v] || []).length > 0);
+            const hasLabel = (m.chordLabels || []).length > 0;
+            return !hasNote && !hasLabel;
+        }
+
+        // 自动清理末尾多余的空白小节，但至少保留 4 小节
+        function trimTrailingEmptyMeasures(minKeep) {
+            const keep = minKeep || 4;
+            while (state.measures.length > keep && isMeasureEmpty(state.measures.length - 1)) {
+                const removedIdx = state.measures.length - 1;
+                state.measures.pop();
+                // 清理与该小节相关的折行、标记、光标引用
+                state.manualBreaks.delete(removedIdx);
+                if (state.measureBarTypes) delete state.measureBarTypes[removedIdx];
+                if (state.caret && state.caret.m >= state.measures.length) {
+                    state.caret = { m: state.measures.length - 1, beat: 0 };
+                }
+            }
+        }
+
+        function toggleLineBreak() {
+            if (state.selectedBarline == null) { setStatus('请先点击要折行处的小节线', true); return; }
+            const i = state.selectedBarline;
+            if (state.manualBreaks.has(i)) state.manualBreaks.delete(i);
+            else state.manualBreaks.add(i);
+            render();
+        }
+
+        // ---------- 和弦检查 ----------
+        function keyTonicPc() {
+            const k = KEY_OPTIONS[state.keyIndex];
+            const semis = { c: 0, d: 2, e: 4, f: 5, g: 7, a: 9, b: 11 };
+            const base = semis[k.letter.toLowerCase()];
+            const alt = k.acc === '♯' ? 1 : (k.acc === '♭' ? -1 : 0);
+            return ((base + alt) % 12 + 12) % 12;
+        }
+
+        function parsePitch(p) {
+            const m = p.match(/^([a-g])([#b]*)\/(\d+)$/);
+            if (!m) return null;
+            const semis = { c: 0, d: 2, e: 4, f: 5, g: 7, a: 9, b: 11 };
+            let alt = 0;
+            (m[2] || '').split('').forEach(ch => { alt += (ch === '#' ? 1 : -1); });
+            const base = semis[m[1]] + alt;
+            const oct = parseInt(m[3], 10);
+            return { pc: ((base % 12) + 12) % 12, midi: (oct + 1) * 12 + base };
+        }
+
+        // ---------- 等音 / 音名拼写 ----------
+        const SEMIS = { c: 0, d: 2, e: 4, f: 5, g: 7, a: 9, b: 11 };
+        const LETTERS = ['c', 'd', 'e', 'f', 'g', 'a', 'b'];
+        // 各自然音名对应的"书写八度"起点（C 大调）：C..B 同为某八度；用于把 MIDI 拆成 letter + accidental + octave
+        const LETTER_ORDER = ['c', 'd', 'e', 'f', 'g', 'a', 'b'];
+
+        // 把 midi 音高转成 { letter, acc, octave }，其中 acc 的整数为升降号数量（+升/-降）
+        // letterIdx 指定用第几个字母（0=c..6=b），accidental 指定变音数
+        function spellFrom(midi, letter, acc) {
+            const base = SEMIS[letter];            // 0..11
+            const naturalPc = ((base % 12) + 12) % 12;
+            const midiPc = ((midi % 12) + 12) % 12;
+            // 求自然音名的书写八度：以 midi 为基准，找使 (octave+1)*12 + base + acc === midi
+            // 即 octave 满足 (octave+1)*12 = midi - base - acc
+            const octave = Math.round((midi - base - acc) / 12) - 1;
+            return { letter, acc, octave, pitch: letter + accStr(acc) + '/' + octave };
+        }
+
+        function accStr(n) {
+            if (n > 0) return '#'.repeat(n);
+            if (n < 0) return 'b'.repeat(-n);
+            return '';
+        }
+
+        // 返回某个 midi 音高的候选拼写（letter + accidental），按"优先升号"排序
+        // 每个候选项形如 { letter, acc }，acc 为整数
+        function enharmonicCandidates(midi) {
+            const pc = ((midi % 12) + 12) % 12;
+            const out = [];
+            // 遍历 7 个字母，找出能用 ≤2 个变音记号表示该 pc 的拼写
+            LETTER_ORDER.forEach(letter => {
+                const base = SEMIS[letter];
+                // 需要的变音数 n 使得 (base + n) ≡ pc (mod 12)，取 -2..2
+                let diff = pc - base;
+                diff = ((diff % 12) + 12) % 12;   // 0..11
+                // 转为 -2..2 范围的最接近值
+                if (diff > 6) diff -= 12;
+                // 只用单变音（|acc|<=1），教学场景无需双升双降
+                if (Math.abs(diff) <= 1) {
+                    out.push({ letter, acc: diff });
+                }
+            });
+            // 去重（同 letter+acc）
+            const seen = new Set();
+            const uniq = out.filter(o => {
+                const k = o.letter + ':' + o.acc;
+                if (seen.has(k)) return false;
+                seen.add(k); return true;
+            });
+            // 排序：优先常见拼写
+            // 1) 单变音（|acc|=1）和自然音优先，双变音最后
+            // 2) 升号在降号之前（默认升号记谱）
+            uniq.sort((a, b) => {
+                const rare = x => (Math.abs(x.acc) >= 2 ? 1 : 0);
+                if (rare(a) !== rare(b)) return rare(a) - rare(b);
+                const rank = x => (x.acc > 0 ? 0 : (x.acc === 0 ? 1 : 2));
+                if (rank(a) !== rank(b)) return rank(a) - rank(b);
+                return a.acc - b.acc;
+            });
+            return uniq;
+        }
+
+        // 根据当前调号选择默认拼写（返回 pitch 字符串）
+        // 规则：优先使用"调号内应记的音名"（如 G 大调的 F#）；否则默认升号记谱
+        function keySignatureAccidentals() {
+            // 返回一个 map：letter -> 期望变音数（+1 升/ -1 降）for 当前调号
+            const k = KEY_OPTIONS[state.keyIndex];
+            const map = {};
+            const sharpsOrder = ['f', 'c', 'g', 'd', 'a', 'e', 'b'];
+            const flatsOrder = ['b', 'e', 'a', 'd', 'g', 'c', 'f'];
+            const sigCount = ['C', 'G', 'D', 'A', 'E', 'B', 'F#'].indexOf(k.spec);
+            const flatCount = ['F', 'Bb', 'Eb', 'Ab', 'Db', 'Gb'].indexOf(k.spec);
+            if (sigCount >= 0) {
+                for (let i = 0; i < sigCount; i++) map[sharpsOrder[i]] = 1;
+            }
+            if (flatCount >= 0) {
+                // 注意：F 大调有 1 个降号，故为 flatCount + 1 个降号
+                for (let i = 0; i <= flatCount; i++) map[flatsOrder[i]] = -1;
+            }
+            return map;
+        }
+
+        function spellDefault(midi) {
+            const cands = enharmonicCandidates(midi);
+            if (!cands.length) return spellFrom(midi, 'c', 0).pitch;
+            const keyAcc = keySignatureAccidentals();
+            // 1) 优先与调号一致的拼写
+            for (const c of cands) {
+                if ((keyAcc[c.letter] || 0) === c.acc) return spellFrom(midi, c.letter, c.acc).pitch;
+            }
+            // 2) 其余情况按候选排序（升号优先）取第一个
+            const c0 = cands[0];
+            return spellFrom(midi, c0.letter, c0.acc).pitch;
+        }
+
+        // 提取音名中的变音记号（返回 '#'、'b' 或 null）
+        function accidentalOfPitch(p) {
+            const m = p.match(/^[a-g]([#b]+)\/\d+$/);
+            if (!m) return null;
+            return m[1][0];   // 单升/单降返回一个符号；双升双降简化
+        }
+
+        // 在候选拼写中循环切换（dir = +1 / -1）
+        function cycleEnharmonic(pitch, dir) {
+            const info = parsePitch(pitch);
+            if (!info) return pitch;
+            const cands = enharmonicCandidates(info.midi);
+            if (cands.length < 2) return pitch;
+            // 当前拼写
+            const cur = pitch.match(/^([a-g])([#b]*)\/(\d+)$/);
+            const curLetter = cur[1];
+            const curAcc = (cur[2].match(/#/g) || []).length - (cur[2].match(/b/g) || []).length;
+            let idx = cands.findIndex(c => c.letter === curLetter && c.acc === curAcc);
+            if (idx < 0) idx = 0;
+            idx = ((idx + dir) % cands.length + cands.length) % cands.length;
+            const c = cands[idx];
+            return spellFrom(info.midi, c.letter, c.acc).pitch;
+        }
+
+        // 切换当前选中音符的等音拼写
+        function changeSelectedEnharmonic(dir) {
+            if (!state.selNote) { setStatus('请先点击一个音符选中它', true); return; }
+            const sel = state.selNote;
+            const list = state.measures[sel.m].voices[sel.voice];
+            const nt = list.find(n => n.beat === sel.beat && !n.rest);
+            if (!nt) { state.selNote = null; render(); return; }
+            const np = cycleEnharmonic(nt.pitch, dir);
+            if (np === nt.pitch) { setStatus('该音没有其它等音写法'); return; }
+            snapshot();
+            nt.pitch = np;
+            setStatus('已切换为 ' + pitchLabel(np));
+            render();
+        }
+
+        function voiceNoteAt(m, beat, voice) {
+            const list = state.measures[m].voices[voice];
+            return list.find(nt => {
+                if (nt.rest) return false;
+                const span = noteSpan(nt);
+                return span[0] <= beat && beat < span[1];
+            }) || null;
+        }
+
+        function chordFromBeat(m, beat) {
+            const voices = ['S', 'A', 'T', 'B'];
+            const notes = voices.map(v => voiceNoteAt(m, beat, v));
+            if (notes.some(n => !n)) return { missing: true };
+            const parsed = notes.map(n => parsePitch(n.pitch));
+            if (parsed.some(p => !p)) return { missing: true };
+            return { missing: false, notes, parsed };
+        }
+
+        function identifyChord(parsed) {
+            const unique = [...new Set(parsed.map(p => p.pc))].sort((a, b) => a - b);
+            const has = pc => unique.includes(((pc % 12) + 12) % 12);
+            if (unique.length === 3) {
+                for (const r of unique) {
+                    if (has(r + 4) && has(r + 7)) return { kind: 'triad', root: ((r % 12) + 12) % 12, quality: 'major' };
+                    if (has(r + 3) && has(r + 7)) return { kind: 'triad', root: ((r % 12) + 12) % 12, quality: 'minor' };
+                    if (has(r + 3) && has(r + 6)) return { kind: 'triad', root: ((r % 12) + 12) % 12, quality: 'dim' };
+                }
+                return { kind: null, root: null, quality: null };
+            }
+            if (unique.length === 4) {
+                const patterns = [
+                    { q: 'dom7', iv: [0, 4, 7, 10] },
+                    { q: 'maj7', iv: [0, 4, 7, 11] },
+                    { q: 'min7', iv: [0, 3, 7, 10] },
+                    { q: 'halfdim7', iv: [0, 3, 6, 10] },
+                    { q: 'dim7', iv: [0, 3, 6, 9] }
+                ];
+                for (const r of unique) {
+                    for (const p of patterns) {
+                        if (p.iv.every(x => has(r + x))) {
+                            return { kind: 'seventh', root: ((r % 12) + 12) % 12, quality: p.q };
+                        }
+                    }
+                }
+                return { kind: null, root: null, quality: null };
+            }
+            return { kind: null, root: null, quality: null };
+        }
+
+        function funcRootPc(func) {
+            const tonic = keyTonicPc();
+            if (func === 'S' || func === 's') return ((tonic + 5) % 12 + 12) % 12;
+            if (func === 'D') return ((tonic + 7) % 12 + 12) % 12;
+            return tonic;
+        }
+
+        function funcQuality(func) {
+            if (func === 'D') return 'major';
+            return KEY_OPTIONS[state.keyIndex].major ? 'major' : 'minor';
+        }
+
+        function expectedBassPc(func, inv) {
+            const root = funcRootPc(func);
+            const q = funcQuality(func);
+            const pc = x => ((x % 12) + 12) % 12;
+            const third = root + (q === 'minor' ? 3 : 4);
+            const fifth = root + 7;
+            const seventh = root + 10;
+            switch (inv) {
+                case 'none': return pc(root);
+                case '6': return pc(third);
+                case '64': return pc(fifth);
+                case '7': return pc(root);
+                case '56': return pc(third);
+                case '34': return pc(fifth);
+                case '2': return pc(seventh);
+                default: return null;
+            }
+        }
+
+        function checkLabelMatch(lbl, info) {
+            if (!info.func) return false;
+            if (lbl.func === 'K') {
+                return (info.func === 'T' || info.func === 't') && info.inv === '64';
+            }
+            return lbl.func === info.func && lbl.inv === info.inv;
+        }
+
+        function doubledPc(parsed) {
+            const counts = {};
+            parsed.forEach(p => { counts[p.pc] = (counts[p.pc] || 0) + 1; });
+            for (const k of Object.keys(counts)) if (counts[k] >= 2) return parseInt(k, 10);
+            return null;
+        }
+
+        function intervalCategory(a, b) {
+            const diff = Math.abs(a - b);
+            if (diff === 0) return 'unison';
+            const mod = ((diff % 12) + 12) % 12;
+            if (mod === 7) return 'p5';
+            if (mod === 0) return 'octave';
+            return null;
+        }
+
+        function checkChord(m, lbl) {
+            const errors = [];
+            const chord = chordFromBeat(m, lbl.beat);
+            if (chord.missing) {
+                errors.push('该拍位四声部不完整');
+                return { m, beat: lbl.beat, ok: false, errors };
+            }
+            const parsed = chord.parsed;
+            const ident = identifyChord(parsed);
+            if (ident.root == null) {
+                errors.push('无法识别为和弦');
+                return { m, beat: lbl.beat, ok: false, errors };
+            }
+
+            const tonic = keyTonicPc();
+            const deg = ((ident.root - tonic) % 12 + 12) % 12;
+            const majorKey = KEY_OPTIONS[state.keyIndex].major;
+            let actualFunc = null;
+            if (deg === 0) actualFunc = majorKey ? 'T' : 't';
+            else if (deg === 5) actualFunc = majorKey ? 'S' : 's';
+            else if (deg === 7) actualFunc = 'D';
+            const minorThird = ['minor', 'dim', 'min7', 'halfdim7', 'dim7'].includes(ident.quality);
+            const dimFifth = ['dim', 'halfdim7', 'dim7'].includes(ident.quality);
+            const third = ((ident.root + (minorThird ? 3 : 4)) % 12 + 12) % 12;
+            const fifth = ((ident.root + (dimFifth ? 6 : 7)) % 12 + 12) % 12;
+            let seventh = null;
+            if (ident.kind === 'seventh') {
+                if (ident.quality === 'maj7') seventh = ((ident.root + 11) % 12 + 12) % 12;
+                else if (ident.quality === 'dim7') seventh = ((ident.root + 9) % 12 + 12) % 12;
+                else seventh = ((ident.root + 10) % 12 + 12) % 12;
+            }
+            const bass = parsed.reduce((a, p) => (p.midi < a.midi ? p : a));
+            let actualInv = null;
+            if (ident.kind === 'triad') {
+                if (bass.pc === ident.root) actualInv = 'none';
+                else if (bass.pc === third) actualInv = '6';
+                else if (bass.pc === fifth) actualInv = '64';
+            } else {
+                if (bass.pc === ident.root) actualInv = '7';
+                else if (bass.pc === third) actualInv = '56';
+                else if (bass.pc === fifth) actualInv = '34';
+                else if (bass.pc === seventh) actualInv = '2';
+            }
+            const info = { func: actualFunc, inv: actualInv, third, fifth };
+
+            // 1) 排列：声部交叉与间距
+            const [S, A, T, B] = parsed.map(p => p.midi);
+            if (S < A || A < T || T < B) errors.push('声部交叉');
+            if (S - A > 12) errors.push('高音-中音＞八度');
+            if (A - T > 12) errors.push('中音-次中音＞八度');
+            if (T - B > 24) errors.push('次中音-低音＞两个八度');
+
+            // 2) 低音
+            const expectedBass = expectedBassPc(lbl.func, lbl.inv);
+            if (expectedBass != null && bass.pc !== expectedBass) errors.push('低音错');
+
+            // 3) 标记
+            if (!checkLabelMatch(lbl, info)) errors.push('标记与和弦不符');
+
+            // 4) 排列：重复音规则（目前只对三和弦检查）
+            const doubled = doubledPc(parsed);
+            if (ident.kind === 'triad' && doubled != null) {
+                const leading = ((tonic + 11) % 12 + 12) % 12;
+                if (info.inv === '6' && doubled === info.third) errors.push('六和弦重复了三音');
+                if (info.inv === '64' && doubled !== info.fifth) errors.push('四六和弦应重复五音');
+                if (info.inv === 'none' && doubled === leading) errors.push('重复了导音');
+            }
+
+            return { m, beat: lbl.beat, ok: errors.length === 0, errors };
+        }
+
+        function runCheck() {
+            const labeled = [];
+            state.measures.forEach((measure, mi) => {
+                measure.chordLabels.forEach(lbl => labeled.push({ m: mi, lbl }));
+            });
+            labeled.sort((a, b) => (a.m - b.m) || (a.lbl.beat - b.lbl.beat));
+            const results = labeled.map(item => checkChord(item.m, item.lbl));
+
+            // 4) 连接：平行五度 / 平行八度
+            for (let i = 1; i < labeled.length; i++) {
+                const pChord = chordFromBeat(labeled[i - 1].m, labeled[i - 1].lbl.beat);
+                const cChord = chordFromBeat(labeled[i].m, labeled[i].lbl.beat);
+                if (pChord.missing || cChord.missing) continue;
+                const pv = pChord.parsed, cv = cChord.parsed;
+                const pairs = [[0, 1], [0, 2], [0, 3], [1, 2], [1, 3], [2, 3]];
+                let parallel = false;
+                pairs.forEach(([x, y]) => {
+                    const c1 = intervalCategory(pv[x].midi, pv[y].midi);
+                    const c2 = intervalCategory(cv[x].midi, cv[y].midi);
+                    if (!c1 || !c2) return;
+                    const fifthPair = (c1 === 'p5' && c2 === 'p5');
+                    const octavePair = ((c1 === 'octave' || c1 === 'unison') && (c2 === 'octave' || c2 === 'unison'));
+                    if (!fifthPair && !octavePair) return;
+                    const d1 = cv[x].midi - pv[x].midi;
+                    const d2 = cv[y].midi - pv[y].midi;
+                    if (d1 !== 0 && d2 !== 0 && ((d1 > 0 && d2 > 0) || (d1 < 0 && d2 < 0))) parallel = true;
+                });
+                if (parallel) {
+                    results[i].errors.push('与前和弦平行五/八度');
+                    results[i].ok = false;
+                }
+            }
+
+            state.checkResults = results;
+            render();
+            showCheckSummary(results);
+        }
+
+        function showCheckSummary(results) {
+            const el = document.getElementById('check-summary');
+            if (!results.length) {
+                el.innerHTML = '<div>尚未放置和弦标记，无法检查。请先用「标记」模式点拍位放置 T/S/D。</div>';
+                return;
+            }
+            el.innerHTML = results.map(r => {
+                const loc = '第' + (r.m + 1) + '小节 ' + beatLabel(r.beat);
+                if (r.ok) return '<div class="ok">✓ ' + loc + '：正确</div>';
+                return '<div class="bad">✗ ' + loc + '：' + r.errors.join('；') + '</div>';
+            }).join('');
+        }
+
+        // ---------- 命中检测 ----------
+        function nearestIdx(xs, x) {
+            let idx = 0, min = Infinity;
+            xs.forEach((v, i) => { const d = Math.abs(v - x); if (d < min) { min = d; idx = i; } });
+            return idx;
+        }
+
+        function locate(x, y) {
+            const sys = state.ui.systems.find(s => y >= s.y1 && y <= s.y2);
+            if (!sys) return null;
+
+            // 先判断是否点在某条小节线上：收集本系统所有小节的右边缘线坐标
+            const barCandidates = [];
+            for (const m of sys.measures) {
+                const g = state.ui.measureGeom[m];
+                if (!g) continue;
+                barCandidates.push({ measure: m, x: g.x2 });
+            }
+            // 若点击位置非常接近某条小节线（±10px），判定为选小节线
+            let nearestBar = null, minBarDist = Infinity;
+            barCandidates.forEach(bc => {
+                const d = Math.abs(bc.x - x);
+                if (d < minBarDist) { minBarDist = d; nearestBar = bc; }
+            });
+            if (nearestBar && minBarDist <= 10) {
+                return { type: 'barline', measure: nearestBar.measure };
+            }
+
+            // 否则判定为点击节拍位
+            let mi = null;
+            for (const m of sys.measures) {
+                const g = state.ui.measureGeom[m];
+                if (g && x >= g.x1 && x <= g.x2) { mi = m; break; }
+            }
+            if (mi == null) return null;
+            const g = state.ui.measureGeom[mi];
+            const idx = nearestIdx(g.beatXs, x);
+            return { type: 'beat', measure: mi, beat: idx * 0.25 };
+        }
+
+        function buildKeySelect() {
+            const sel = document.getElementById('key-select');
+            sel.innerHTML = '';
+            KEY_OPTIONS.forEach((k, i) => {
+                const opt = document.createElement('option');
+                opt.value = i;
+                opt.textContent = k.letter + k.acc + ' ' + (k.major ? '大调' : '小调') + '（' + k.sig + '）';
+                sel.appendChild(opt);
+            });
+            sel.value = state.keyIndex;
+        }
+
+        function buildChordFuncButtons() {
+            const wrap = document.getElementById('chord-func-btns');
+            const majorKey = KEY_OPTIONS[state.keyIndex].major;
+            const funcs = majorKey ? ['T', 'S', 'D', 'K'] : ['t', 's', 'D', 'K'];
+            if (!funcs.includes(state.chordFunc)) state.chordFunc = funcs[0];
+            wrap.innerHTML = '';
+            funcs.forEach(f => {
+                const btn = document.createElement('button');
+                btn.className = 'func-btn' + (f === state.chordFunc ? ' active' : '');
+                btn.textContent = f;
+                btn.dataset.func = f;
+                btn.addEventListener('click', () => {
+                    state.chordFunc = f;
+                    if (f === 'K') state.chordInv = '64';
+                    document.querySelectorAll('.func-btn').forEach(b => b.classList.remove('active'));
+                    btn.classList.add('active');
+                    document.querySelectorAll('.inv-btn').forEach(b => {
+                        b.classList.toggle('active', b.dataset.inv === state.chordInv);
+                    });
+                    updateStatus();
+                });
+                wrap.appendChild(btn);
+            });
+            document.querySelectorAll('.inv-btn').forEach(b => {
+                b.classList.toggle('active', b.dataset.inv === state.chordInv);
+            });
+        }
+
+        // ---------- 钢琴 ----------
+        // 计算某音名（如 c#/4）的 midi 音高
+        function midiOfPitch(p) { const info = parsePitch(p); return info ? info.midi : null; }
+
+        function buildPiano() {
+            const pianoEl = document.getElementById('piano');
+            pianoEl.innerHTML = '';
+            const order = ['c', 'c#', 'd', 'd#', 'e', 'f', 'f#', 'g', 'g#', 'a', 'a#', 'b'];
+            const keys = [];
+            for (let oct = 2; oct <= 5; oct++) {
+                order.forEach(n => keys.push({ pitch: n + '/' + oct, black: n.includes('#') }));
+            }
+            keys.push({ pitch: 'c/6', black: false });
+            keys.forEach(k => {
+                const midi = midiOfPitch(k.pitch);
+                const btn = document.createElement('button');
+                btn.className = 'piano-key ' + (k.black ? 'black' : 'white');
+                btn.textContent = k.pitch.toUpperCase();
+                btn.dataset.midi = midi;
+                btn.addEventListener('click', (e) => {
+                    onPianoKey(pitchFromMidiKey(midi, k.pitch));
+                    if (e.currentTarget && e.currentTarget.blur) e.currentTarget.blur();
+                });
+                pianoEl.appendChild(btn);
+            });
+        }
+
+        // 点击琴键时决定写入的音名：
+        // - 白键固定音名（c/d/e...），用调号拼写
+        // - 黑键先用"调号感知的默认拼写"（如 G 大调的 F# 键 → f#）
+        function pitchFromMidiKey(midi, keyPitch) {
+            const isBlack = keyPitch.includes('#');
+            if (!isBlack) {
+                // 白键：直接用其自然音名 + 当前八度（保持八度不变）
+                const m = keyPitch.match(/^([a-g])\/(\d+)$/);
+                if (m) return m[1] + '/' + m[2];
+            }
+            // 黑键：按调号智能拼写
+            return spellDefault(midi);
+        }
+
+        // 让指定的琴键水平居中显示（默认 F4）
+        function centerPianoOn(pitch) {
+            const pianoEl = document.getElementById('piano');
+            if (!pianoEl) return;
+            const midi = midiOfPitch(pitch);
+            const key = pianoEl.querySelector('.piano-key[data-midi="' + midi + '"]');
+            if (!key) return;
+            const target = key.offsetLeft + key.offsetWidth / 2 - pianoEl.clientWidth / 2;
+            pianoEl.scrollLeft = Math.max(0, target);
+        }
+
+        function onPianoKey(pitch) {
+            if (!requireUser()) return;
+            if (state.mode === 'erase') { setStatus('当前是橡皮模式，请点击谱面删除音符', true); return; }
+            if (state.mode === 'rest') { setStatus('当前是休止模式，请点击谱面插入休止', true); return; }
+            if (state.mode === 'tie') { setStatus('当前是连线模式，请点击谱面选择两个音符', true); return; }
+            if (state.mode === 'label') { setStatus('当前是标记模式，请点击谱面放置和弦标记', true); return; }
+            if (state.mode === 'select') { setStatus('当前是选择模式，请点击谱面选择音符', true); return; }
+            if (state.tripletPending) {
+                state.tripletPending.notes.push(pitch);
+                if (state.tripletPending.notes.length < 3) {
+                    setStatus('三连音 已输入 ' + state.tripletPending.notes.length + '/3 个音');
+                    return;
+                }
+                commitTriplet();
+                return;
+            }
+            insertNote(pitch);
+        }
+
+        // ---------- 播放 ----------
+        const TIMBRES = {
+            piano: { wave: 'triangle', attack: 0.01, level: 0.25, decay: 1.1 },
+            strings: { wave: 'sawtooth', attack: 0.12, level: 0.14, sustain: true, release: 0.15, filter: 2400, vibrato: { rate: 5, depth: 7 } },
+            horn: { wave: 'sawtooth', attack: 0.06, level: 0.15, sustain: true, release: 0.12, filter: 950, vibrato: { rate: 4.5, depth: 6 } },
+            voice: { wave: 'sawtooth', attack: 0.08, level: 0.14, sustain: true, release: 0.12, formants: [700, 1150], vibrato: { rate: 5, depth: 6 } }
+        };
+
+        let audioCtx = null;
+        let tupletSeq = 0;
+        function getAudioContext() {
+            if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+            if (audioCtx.state === 'suspended') audioCtx.resume();
+            return audioCtx;
+        }
+        function freqOf(pitch) {
+            const m = pitch.match(/^([a-g])([#b]*)\/(\d+)$/);
+            if (!m) return 440;
+            const semis = { c: 0, d: 2, e: 4, f: 5, g: 7, a: 9, b: 11 };
+            let accidental = 0;
+            (m[2] || '').split('').forEach(ch => { accidental += (ch === '#' ? 1 : -1); });
+            const midi = (parseInt(m[3], 10) + 1) * 12 + semis[m[1]] + accidental;
+            return 440 * Math.pow(2, (midi - 69) / 12);
+        }
+        function playTone(ctx, freq, start, dur, timbreName) {
+            const t = TIMBRES[timbreName] || TIMBRES.piano;
+            const osc = ctx.createOscillator();
+            const gain = ctx.createGain();
+            osc.type = t.wave;
+            osc.frequency.value = freq;
+
+            if (t.vibrato) {
+                const lfo = ctx.createOscillator();
+                const lfoGain = ctx.createGain();
+                lfo.frequency.value = t.vibrato.rate;
+                lfoGain.gain.value = t.vibrato.depth;
+                lfo.connect(lfoGain).connect(osc.detune);
+                lfo.start(start);
+                lfo.stop(start + dur + 0.05);
+            }
+
+            let tail = osc;
+            if (t.filter) {
+                const f = ctx.createBiquadFilter();
+                f.type = 'lowpass';
+                f.frequency.value = t.filter;
+                tail.connect(f);
+                tail = f;
+            }
+            if (t.formants) {
+                const b1 = ctx.createBiquadFilter(); b1.type = 'bandpass'; b1.frequency.value = t.formants[0]; b1.Q.value = 5;
+                const b2 = ctx.createBiquadFilter(); b2.type = 'bandpass'; b2.frequency.value = t.formants[1]; b2.Q.value = 5;
+                const mix = ctx.createGain();
+                tail.connect(b1); tail.connect(b2);
+                b1.connect(mix); b2.connect(mix);
+                tail = mix;
+            }
+
+            gain.gain.setValueAtTime(0.0001, start);
+            gain.gain.exponentialRampToValueAtTime(t.level, start + t.attack);
+            if (t.decay) {
+                gain.gain.exponentialRampToValueAtTime(0.0001, start + Math.min(dur, t.decay));
+            } else {
+                gain.gain.setValueAtTime(t.level, start + Math.max(t.attack, dur - (t.release || 0.1)));
+                gain.gain.exponentialRampToValueAtTime(0.0001, start + dur);
+            }
+
+            tail.connect(gain).connect(ctx.destination);
+            osc.start(start);
+            osc.stop(start + dur + 0.05);
+        }
+        let playbackAnimId = null;
+        let playbackCursorEl = null;
+
+        function clearPlaybackCursor() {
+            if (playbackAnimId) { cancelAnimationFrame(playbackAnimId); playbackAnimId = null; }
+            if (playbackCursorEl && playbackCursorEl.parentNode) playbackCursorEl.parentNode.removeChild(playbackCursorEl);
+            playbackCursorEl = null;
+        }
+
+        function updatePlaybackCursor(m, beat) {
+            const svg = state.ui.svg;
+            const g = state.ui.measureGeom[m];
+            if (!svg || !g) return;
+            const idx = Math.min(Math.round(beat * 4), g.beatXs.length - 1);
+            const x = g.beatXs[idx];
+            if (!playbackCursorEl) {
+                playbackCursorEl = document.createElementNS('http://www.w3.org/2000/svg', 'line');
+                playbackCursorEl.setAttribute('stroke', '#1565c0');
+                playbackCursorEl.setAttribute('stroke-width', '2');
+                svg.appendChild(playbackCursorEl);
+            }
+            playbackCursorEl.setAttribute('x1', x);
+            playbackCursorEl.setAttribute('x2', x);
+            playbackCursorEl.setAttribute('y1', g.sysTop);
+            playbackCursorEl.setAttribute('y2', g.sysBottom);
+            scrollToSvgPosition(x, (g.sysTop + g.sysBottom) / 2);
+        }
+
+        function playScore() {
+            const ctx = getAudioContext();
+            const beatDur = 0.6 * (100 / state.playSpeed);
+            state.measures.forEach((measure, mi) => {
+                VOICES.forEach(v => {
+                    measure.voices[v].forEach(nt => {
+                        if (nt.rest) return;
+                        const start = ctx.currentTime + mi * measureBeats() * beatDur + nt.beat * beatDur;
+                        const dur = DUR_BEATS[nt.dur] * beatDur * 0.9;
+                        playTone(ctx, freqOf(nt.pitch), start, dur, state.timbre);
+                    });
+                });
+            });
+            clearPlaybackCursor();
+            const startTime = ctx.currentTime;
+            const perMeasure = measureBeats();
+            const tick = () => {
+                const totalBeats = (ctx.currentTime - startTime) / beatDur;
+                const m = Math.floor(totalBeats / perMeasure);
+                const beat = totalBeats - m * perMeasure;
+                if (m >= state.measures.length) { clearPlaybackCursor(); return; }
+                updatePlaybackCursor(m, beat);
+                playbackAnimId = requestAnimationFrame(tick);
+            };
+            playbackAnimId = requestAnimationFrame(tick);
+        }
+
+        // ---------- 事件绑定 ----------
+        // 让题目 textarea 随内容自动增高（最小 1 行，最大由 CSS max-height 限制）
+        function autoGrowTopic() {
+            const ta = document.getElementById('topic-input');
+            if (!ta) return;
+            ta.style.height = 'auto';
+            ta.style.height = Math.min(ta.scrollHeight, 200) + 'px';
+        }
+
+        function setupEvents() {
+            // 顶部标签切换：显示对应面板，隐藏其他面板；并按标签进入默认模式
+            document.querySelectorAll('.tb-tab').forEach(tab => {
+                tab.addEventListener('click', () => {
+                    document.querySelectorAll('.tb-tab').forEach(t => t.classList.remove('active'));
+                    tab.classList.add('active');
+                    document.querySelectorAll('.tb-panel').forEach(p => p.classList.remove('active'));
+                    const panel = document.querySelector('.tb-panel[data-panel="' + tab.dataset.tab + '"]');
+                    if (panel) panel.classList.add('active');
+
+                    // 按标签自动切换写入模式
+                    const t = tab.dataset.tab;
+                    if (t === 'edit') {
+                        setMode('note');
+                    } else if (t === 'chord') {
+                        setMode('label');
+                    }
+                });
+            });
+
+            document.querySelectorAll('.voice-btn').forEach(btn => {
+                btn.addEventListener('click', () => {
+                    state.currentVoice = btn.dataset.voice;
+                    state.tieStart = null;
+                    document.querySelectorAll('.voice-btn').forEach(b => b.classList.remove('active'));
+                    btn.classList.add('active');
+                    updateStatus();
+                });
+            });
+            document.querySelectorAll('.dur-btn').forEach(btn => {
+                btn.addEventListener('click', () => {
+                    state.currentDuration = btn.dataset.dur;
+                    document.querySelectorAll('.dur-btn').forEach(b => b.classList.remove('active'));
+                    btn.classList.add('active');
+                    updateStatus();
+                });
+            });
+            document.querySelectorAll('.mode-btn').forEach(btn => {
+                btn.addEventListener('click', () => {
+                    setMode(btn.dataset.mode);
+                });
+            });
+            document.querySelectorAll('.timbre-btn').forEach(btn => {
+                btn.addEventListener('click', () => {
+                    state.timbre = btn.dataset.timbre;
+                    document.querySelectorAll('.timbre-btn').forEach(b => b.classList.remove('active'));
+                    btn.classList.add('active');
+                    updateStatus();
+                });
+            });
+
+            document.getElementById('triplet-btn').addEventListener('click', () => {
+                state.tripletArmed = !state.tripletArmed;
+                state.tripletPending = null;
+                document.getElementById('triplet-btn').classList.toggle('active', state.tripletArmed);
+                if (state.tripletArmed) setStatus('三连音：请点击起始拍位，然后点击 3 个音高');
+                else updateStatus();
+            });
+
+            document.querySelectorAll('.inv-btn').forEach(btn => {
+                btn.addEventListener('click', () => {
+                    if (state.chordFunc === 'K') { setStatus('终止四六和弦（K）固定为 4/6', true); return; }
+                    state.chordInv = btn.dataset.inv;
+                    document.querySelectorAll('.inv-btn').forEach(b => b.classList.remove('active'));
+                    btn.classList.add('active');
+                    updateStatus();
+                });
+            });
+            document.getElementById('check-btn').addEventListener('click', runCheck);
+
+            // 小节线样式按钮：先点小节线选中（橙色高亮），再点样式按钮修改
+            document.querySelectorAll('.bar-btn').forEach(btn => {
+                btn.addEventListener('click', () => {
+                    if (state.selectedBarline == null) {
+                        setStatus('请先在谱面上点击要修改的小节线（选中后变橙色）', true);
+                        return;
+                    }
+                    const i = state.selectedBarline;
+                    const type = btn.dataset.bar;
+                    const typeName = { singleRight: '单竖线', double: '双竖线', boldDoubleRight: '终止线' }[type] || type;
+                    const isLast = (i === state.measures.length - 1);
+                    if (isLast) {
+                        state.endBarType = type;
+                        document.getElementById('barline-select').value = type;
+                    } else {
+                        if (!state.measureBarTypes) state.measureBarTypes = {};
+                        state.measureBarTypes[i] = type;
+                    }
+                    setStatus('已把第 ' + (i + 1) + ' 小节末尾的小节线改为「' + typeName + '」');
+                    render();
+                });
+            });
+            document.getElementById('speed-range').addEventListener('input', (e) => {
+                state.playSpeed = parseInt(e.target.value, 10);
+                document.getElementById('speed-label').textContent = state.playSpeed + '%';
+            });
+
+            // 题目输入：自动换行 + 随内容增高
+            document.getElementById('topic-input').addEventListener('input', autoGrowTopic);
+
+            document.getElementById('key-select').addEventListener('change', (e) => {
+                state.keyIndex = parseInt(e.target.value, 10);
+                state.checkResults = null;
+                state.chordFunc = (KEY_OPTIONS[state.keyIndex].major ? 'T' : 't');
+                state.chordInv = 'none';
+                buildChordFuncButtons();
+                render();
+            });
+            document.getElementById('time-select').addEventListener('change', (e) => {
+                snapshot();
+                state.timeSig = e.target.value;
+                state.measures = [newMeasure()];
+                state.ties = [];
+                state.manualBreaks.clear();
+                state.caret = null;
+                state.tieStart = null;
+                state.selectedBarline = null;
+                render();
+            });
+            document.getElementById('barline-select').addEventListener('change', (e) => {
+                state.endBarType = e.target.value;
+                render();
+            });
+
+            document.getElementById('break-btn').addEventListener('click', toggleLineBreak);
+            document.getElementById('add-measure-btn').addEventListener('click', addMeasure);
+document.getElementById('del-measure-btn').addEventListener('click', deleteMeasure);
+            document.getElementById('enharmonic-up-btn').addEventListener('click', () => changeSelectedEnharmonic(-1));
+            document.getElementById('enharmonic-down-btn').addEventListener('click', () => changeSelectedEnharmonic(1));
+            document.getElementById('undo-btn').addEventListener('click', undo);
+            document.getElementById('clear-btn').addEventListener('click', clearAll);
+            document.getElementById('play-btn').addEventListener('click', playScore);
+            document.getElementById('export-img-btn').addEventListener('click', exportAsImage);
+            document.getElementById('export-pdf-btn').addEventListener('click', exportAsPdf);
+            document.getElementById('piano-toggle').addEventListener('click', () => {
+                const p = document.getElementById('piano');
+                const hidden = (p.style.display === 'none');
+                p.style.display = hidden ? 'block' : 'none';
+            });
+
+            // 用户信息：修改按钮（会清空练习）、模态保存、回车保存
+            document.getElementById('edit-user-btn').addEventListener('click', changeUser);
+            document.getElementById('um-save-btn').addEventListener('click', saveUserFromModal);
+            ['um-name', 'um-class', 'um-teacher'].forEach(id => {
+                document.getElementById(id).addEventListener('keydown', (e) => {
+                    if (e.key === 'Enter') saveUserFromModal();
+                });
+            });
+
+            document.getElementById('score').addEventListener('click', (e) => {
+                const svg = state.ui.svg;
+                if (!svg) return;
+                const rect = svg.getBoundingClientRect();
+                const x = e.clientX - rect.left;
+                const y = e.clientY - rect.top;
+                const loc = locate(x, y);
+                if (!loc) return;
+                if (!requireUser()) return;
+                if (loc.type === 'barline') {
+                    if (state.selectedBarline === loc.measure) {
+                        state.selectedBarline = null;
+                    } else {
+                        state.selectedBarline = loc.measure;
+                        setStatus('已选中第 ' + (loc.measure + 1) + ' 小节末尾的小节线，请到「编辑」标签点样式按钮');
+                    }
+                    render();
+                    return;
+                }
+                state.selectedBarline = null;
+                // 选择模式：点击音符选中（紫色框），用于等音切换；点空白处取消选中
+                if (state.mode === 'select') {
+                    const hit = findNoteAtClick(loc.measure, loc.beat);
+                    if (hit) {
+                        state.selNote = { voice: hit.voice, m: loc.measure, beat: hit.nt.beat };
+                        setStatus('已选中音符 ' + pitchLabel(hit.nt.pitch) + '，按 ↑/↓ 或点「等音」切换升/降号');
+                    } else {
+                        state.selNote = null;
+                        setStatus('该拍位没有音符');
+                    }
+                    render();
+                    return;
+                }
+                state.selNote = null;
+                if (state.mode === 'label') { placeChordLabel(loc.measure, loc.beat); return; }
+                if (state.mode === 'tie') { handleTieClick(loc.measure, loc.beat); return; }
+                if (state.mode === 'erase') { deleteAt(loc.measure, loc.beat); return; }
+                if (state.mode === 'rest') { insertRestAt(loc.measure, loc.beat); return; }
+                if (state.mode === 'note' && state.tripletArmed) {
+                    state.tripletPending = { m: loc.measure, beat: loc.beat, notes: [] };
+                    setStatus('三连音起始已选，请点击 3 个音高');
+                    return;
+                }
+                state.caret = { m: loc.measure, beat: loc.beat };
+                render();
+            });
+
+            document.addEventListener('keydown', (e) => {
+                // 正在输入框/文本域里打字时不触发快捷键
+                const tag = (e.target && e.target.tagName) || '';
+                const typing = (tag === 'INPUT' || tag === 'TEXTAREA' || e.target.isContentEditable);
+                if (e.key === 'Enter' && !typing) toggleLineBreak();
+                // 选中音符后，↑/↓ 切换等音记谱
+                if (!typing && state.selNote && (e.key === 'ArrowUp' || e.key === 'ArrowDown')) {
+                    e.preventDefault();
+                    changeSelectedEnharmonic(e.key === 'ArrowUp' ? -1 : 1);
+                }
+            });
+        }
+
+        window.addEventListener('DOMContentLoaded', () => {
+            loadUser();
+            refreshUserBar();
+            buildKeySelect();
+            buildChordFuncButtons();
+            buildPiano();
+            setupEvents();
+            render();
+            autoGrowTopic();
+            // 等布局完成后，把 F4 居中显示
+            requestAnimationFrame(() => centerPianoOn('f/4'));
+            // 每次进入/刷新都先显示用户信息页（必填）；已保存的信息会预填，无需修改直接点保存即可
+            openUserModal(true);
+        });
+        window.addEventListener('resize', render);
+    </script>
+</body>
+
+</html>

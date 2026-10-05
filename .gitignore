@@ -1,0 +1,22 @@
+# ===== macOS =====
+.DS_Store
+
+# ===== 备份文件 =====
+*.backup
+*.backup_original
+
+# ===== Homebrew 误创建的占位符目录 =====
+{{HOMEBREW_PREFIX}}
+{{pkgetc}}
+
+# ===== 工具状态（CodeWhale） =====
+.codewhale/
+
+# ===== 部署产物 =====
+deploy/
+
+# ===== 教材 PDF（原始资料，涉及版权且体积大，不纳入版本库） =====
+*.pdf
+
+# ===== 依赖 / 临时 =====
+node_modules/
