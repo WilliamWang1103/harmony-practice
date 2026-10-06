@@ -2145,7 +2145,7 @@ function buildNewPiano() {
         keyDiv.appendChild(bottomDiv);
         keyDiv.setAttribute('data-note', note);
         keyDiv.addEventListener('mousedown', (e) => { e.stopPropagation(); onPianoKeyPress(note, keyDiv); });
-        keyDiv.addEventListener('touchstart', (e) => { e.preventDefault(); onPianoKeyPress(note, keyDiv); });
+        keyDiv.addEventListener('touchstart', (e) => { onPianoKeyPress(note, keyDiv); });
         pianoDiv.appendChild(keyDiv);
         whiteKeyList.push(keyDiv);
         pianoKeyMap.set(note, keyDiv);
@@ -2185,7 +2185,7 @@ function buildNewPiano() {
                 bk.appendChild(flatSpan);
                 bk.setAttribute('data-note', black);
                 bk.addEventListener('mousedown', (e) => { e.stopPropagation(); onPianoKeyPress(black, bk); });
-                bk.addEventListener('touchstart', (e) => { e.preventDefault(); onPianoKeyPress(black, bk); });
+                bk.addEventListener('touchstart', (e) => { onPianoKeyPress(black, bk); });
                 pianoDiv.appendChild(bk);
                 // 先加入 DOM 再读取实际宽度（响应式媒体查询下为 30px 或 26px）
                 const bw = bk.offsetWidth || 30;
@@ -2267,11 +2267,9 @@ function initSlidePlay() {
                 break;
             }
         }
-        e.preventDefault();
     });
     pianoArea.addEventListener('touchmove', (e) => {
         if (!isSliding) return;
-        e.preventDefault();
         const touch = e.touches[0];
         const els = document.elementsFromPoint(touch.clientX, touch.clientY);
         for (let elem of els) {
@@ -2295,7 +2293,6 @@ function initSlidePlay() {
             onPianoKeyPress(note, target);
             lastNote = note;
         }
-        e.preventDefault();
     });
     window.addEventListener('mousemove', (e) => {
         if (mouseDown) {
@@ -3100,7 +3097,7 @@ function hwExportImage() {
     let ly = pad + 54;
     ctx.fillText('姓名：' + (ui.name || '—') + '    指导教师：' + (ui.teacher || '—') + '    班级：' + (ui.majorClass || '—'), pad, ly); ly += 20;
     if (qText) ly = wrapCanvasText(ctx, '题目：' + qText, pad, ly, maxTextW, 20);
-    ctx.fillText('调式调性：' + keyName + '    拍号：' + hwState.timeSig + '    完成时间：' + hwFormatDateTime(new Date()), pad, ly); ly += 14;
+    ctx.fillText('调式调性：' + keyName + '    拍号：' + hwState.timeSig + '    导出时间：' + hwFormatDateTime(new Date()), pad, ly); ly += 14;
     ctx.strokeStyle = '#7b1fa2'; ctx.lineWidth = 1.5;
     ctx.beginPath(); ctx.moveTo(pad, ly); ctx.lineTo(canvasW - pad, ly); ctx.stroke();
     const svgData = new XMLSerializer().serializeToString(svg);
@@ -3142,7 +3139,7 @@ function practiceExportImage() {
     const qEl = document.getElementById('practice-question');
     const qText = qEl ? (qEl.textContent || '').replace(/\s+/g, ' ').trim() : '';
     const qLines = qText ? Math.max(1, Math.ceil(probe.measureText('最后一题：' + qText).width / maxTextW)) : 0;
-    const headH = 110 + qLines * 20;
+    const headH = 130 + qLines * 20;
     const canvasW = svgW + pad * 2;
     const canvasH = headH + svgH + pad * 2;
     const canvas = document.createElement('canvas');
@@ -3165,6 +3162,7 @@ function practiceExportImage() {
     const wrongEl = document.getElementById('practice-wrong');
     const progressEl = document.getElementById('practice-progress');
     ctx.fillText('得分：' + (scoreEl ? scoreEl.textContent : '0') + '    正确：' + (correctEl ? correctEl.textContent : '0') + '    错误：' + (wrongEl ? wrongEl.textContent : '0') + '    进度：' + (progressEl ? progressEl.textContent : '0'), pad, ly); ly += 20;
+    ctx.fillText('导出时间：' + hwFormatDateTime(new Date()), pad, ly); ly += 20;
     if (qText) ly = wrapCanvasText(ctx, '最后一题：' + qText, pad, ly, maxTextW, 20);
     ctx.strokeStyle = '#7b1fa2'; ctx.lineWidth = 1.5;
     ctx.beginPath(); ctx.moveTo(pad, ly); ctx.lineTo(canvasW - pad, ly); ctx.stroke();

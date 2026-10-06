@@ -691,6 +691,7 @@ body {
     overflow-x: auto;
     overflow-y: hidden;
     -webkit-overflow-scrolling: touch;
+    touch-action: pan-x;
     background: transparent;
     transition: transform 0.3s ease, opacity 0.3s ease;
     transform: translateY(0);
