@@ -2145,7 +2145,6 @@ function buildNewPiano() {
         keyDiv.appendChild(bottomDiv);
         keyDiv.setAttribute('data-note', note);
         keyDiv.addEventListener('mousedown', (e) => { e.stopPropagation(); onPianoKeyPress(note, keyDiv); });
-        keyDiv.addEventListener('touchstart', (e) => { onPianoKeyPress(note, keyDiv); });
         pianoDiv.appendChild(keyDiv);
         whiteKeyList.push(keyDiv);
         pianoKeyMap.set(note, keyDiv);
@@ -2185,7 +2184,6 @@ function buildNewPiano() {
                 bk.appendChild(flatSpan);
                 bk.setAttribute('data-note', black);
                 bk.addEventListener('mousedown', (e) => { e.stopPropagation(); onPianoKeyPress(black, bk); });
-                bk.addEventListener('touchstart', (e) => { onPianoKeyPress(black, bk); });
                 pianoDiv.appendChild(bk);
                 // 先加入 DOM 再读取实际宽度（响应式媒体查询下为 30px 或 26px）
                 const bw = bk.offsetWidth || 30;
@@ -2252,39 +2250,39 @@ function onPianoKeyPress(note, domElement) {
 function initSlidePlay() {
     const pianoArea = document.getElementById('pianoKeyboard');
     if (!pianoArea) return;
-    let isSliding = false;
-    let lastNote = null;
+    // —— 触摸：区分「点击」（静止抬起发音）与「滑动」（移动不发音，仅滚动） ——
+    let touchStartX = 0, touchStartY = 0, touchStartNote = null, isSwiping = false;
     pianoArea.addEventListener('touchstart', (e) => {
-        isSliding = true;
-        lastNote = null;
         const touch = e.touches[0];
+        touchStartX = touch.clientX;
+        touchStartY = touch.clientY;
+        isSwiping = false;
+        touchStartNote = null;
         const el = document.elementsFromPoint(touch.clientX, touch.clientY);
         for (let elem of el) {
             if (elem.getAttribute && elem.getAttribute('data-note')) {
-                let note = elem.getAttribute('data-note');
-                onPianoKeyPress(note, elem);
-                lastNote = note;
+                touchStartNote = elem.getAttribute('data-note');
                 break;
             }
         }
-    });
+    }, { passive: true });
     pianoArea.addEventListener('touchmove', (e) => {
-        if (!isSliding) return;
         const touch = e.touches[0];
-        const els = document.elementsFromPoint(touch.clientX, touch.clientY);
-        for (let elem of els) {
-            if (elem.getAttribute && elem.getAttribute('data-note')) {
-                let note = elem.getAttribute('data-note');
-                if (note !== lastNote) {
-                    onPianoKeyPress(note, elem);
-                    lastNote = note;
-                }
-                break;
-            }
+        if (Math.abs(touch.clientX - touchStartX) > 10 || Math.abs(touch.clientY - touchStartY) > 10) {
+            isSwiping = true;
         }
+    }, { passive: true });
+    pianoArea.addEventListener('touchend', () => {
+        if (!isSwiping && touchStartNote) {
+            const key = pianoKeyMap.get(touchStartNote) || pianoArea.querySelector(`[data-note="${touchStartNote}"]`);
+            onPianoKeyPress(touchStartNote, key || pianoArea);
+        }
+        touchStartNote = null;
+        isSwiping = false;
     });
-    pianoArea.addEventListener('touchend', () => { isSliding = false; lastNote = null; });
+    // —— 鼠标：点击发音 + 按住滑动连续发音 ——
     let mouseDown = false;
+    let lastNote = null;
     pianoArea.addEventListener('mousedown', (e) => {
         mouseDown = true;
         let target = e.target.closest('[data-note]');
