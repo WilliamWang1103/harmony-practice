@@ -1484,15 +1484,16 @@ const PRACTICE_PER_QUESTION = { listen: 10, build: 10, arrange: 10, upper: 10, f
 // 练习得分：各练习题型（百分制取最高）的平均值
 function computePracticeScore(prog) {
     const scores = [];
+    const s = prog.scores || {};
     for (const type in PRACTICE_PER_QUESTION) {
-        const arr = prog.scores[type] || [];
+        const arr = s[type] || [];
         if (arr.length) scores.push(Math.max(...arr) * PRACTICE_PER_QUESTION[type]);
     }
     return scores.length ? Math.round(scores.reduce((a, b) => a + b, 0) / scores.length) : 0;
 }
 // 习题得分：各习题小题（百分制取最高）的平均值（兼容旧数组数据：取最高）
 function computeHomeworkScore(prog) {
-    const hw = prog.scores.homework;
+    const hw = (prog.scores || {}).homework;
     if (!hw) return 0;
     if (Array.isArray(hw)) {
         const arr = hw.filter(v => typeof v === 'number');
