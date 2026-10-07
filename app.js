@@ -865,7 +865,7 @@ function updateStats() {
     textbookChapters.forEach(ch => {
         const prog = appState.chapterProgress[ch.id];
         if (!prog) return;
-        masterySum += (prog.mastery || 0);
+        masterySum += computeChapterMastery(ch.id);
         if (prog.completed) mastered++;
         const scores = prog.scores || {};
         Object.keys(scores).forEach(type => {
@@ -1462,6 +1462,28 @@ function completeTriadPractice() {
     appState.currentMode = 'triad-select';
     renderTriadScores();
 }
+// 各练习题型每题满分（10 题，每题 10 分 = 100）
+const PRACTICE_PER_QUESTION = { listen: 10, build: 10, arrange: 10, upper: 10, fourpart: 10 };
+// 计算章节掌握度：练习各题型（百分制取最高）+ 习题（百分制取最高）的平均值
+function computeChapterMastery(chapterId) {
+    const prog = appState.chapterProgress[chapterId];
+    if (!prog || !prog.scores) return 0;
+    const scores = [];
+    for (const type in PRACTICE_PER_QUESTION) {
+        const arr = prog.scores[type] || [];
+        if (arr.length) scores.push(Math.max(...arr) * PRACTICE_PER_QUESTION[type]);
+    }
+    const hw = prog.scores.homework || [];
+    if (hw.length) scores.push(Math.max(...hw));
+    return scores.length ? Math.round(scores.reduce((a, b) => a + b, 0) / scores.length) : 0;
+}
+// 刷新章节掌握度与通关状态：掌握度 ≥ 70% 视为通关
+function refreshChapterMastery(chapterId) {
+    const prog = appState.chapterProgress[chapterId];
+    if (!prog) return;
+    prog.mastery = computeChapterMastery(chapterId);
+    prog.completed = prog.mastery >= 70;
+}
 function recordTriadScore(type, correct) {
     let prog = appState.chapterProgress[1];
     if (!prog) prog = appState.chapterProgress[1] = { unlocked: true, completed: false, mastery: 0 };
@@ -1470,10 +1492,7 @@ function recordTriadScore(type, correct) {
     prog.scores[type].push(correct);
     prog.scores[type].sort((a, b) => b - a);
     prog.scores[type] = prog.scores[type].slice(0, 5);
-    if (correct >= 7) {
-        prog.completed = true;
-        prog.mastery = Math.max(prog.mastery || 0, correct * 10);
-    }
+    refreshChapterMastery(1);
     saveProgress();
 }
 function renderTriadScores() {
@@ -1815,10 +1834,7 @@ function recordFourPartScore(type, correct) {
     prog.scores[type].push(correct);
     prog.scores[type].sort((a, b) => b - a);
     prog.scores[type] = prog.scores[type].slice(0, 5);
-    if (correct >= 7) {
-        prog.completed = true;
-        prog.mastery = Math.max(prog.mastery || 0, correct * 10);
-    }
+    refreshChapterMastery(2);
     saveProgress();
 }
 function renderFourPartScores() {
@@ -2977,6 +2993,23 @@ function hwRunCheck() {
     hwState.checkResults = results;
     hwRender();
     hwShowCheckSummary(results);
+    // 习题得分计入章节掌握度（百分制，取最高保留 5 次）
+    if (appState.currentChapter) {
+        const chapterId = appState.currentChapter.id;
+        const prog = appState.chapterProgress[chapterId];
+        if (prog) {
+            if (!prog.scores) prog.scores = {};
+            prog.scores.homework = prog.scores.homework || [];
+            const total = results.reduce((sum, r) => sum + (r && r.score ? r.score : 0), 0);
+            const full = results.length * 5;
+            const percent = full ? Math.round(total / full * 100) : 0;
+            prog.scores.homework.push(percent);
+            prog.scores.homework.sort((a, b) => b - a);
+            prog.scores.homework = prog.scores.homework.slice(0, 5);
+            refreshChapterMastery(chapterId);
+            saveProgress();
+        }
+    }
 }
 function hwShowCheckSummary(results) {
     const el = document.getElementById('hw-check-summary');
