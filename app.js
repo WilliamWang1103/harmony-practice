@@ -1078,9 +1078,26 @@ function loadChapterContent(chapter) {
         btn.addEventListener('click', () => {
             const idx = parseInt(btn.dataset.exerciseIndex, 10);
             const ex = content.exercises[idx];
-            if (ex) hwOpenHomeworkEditor(ex);
+            if (ex) hwOpenHomeworkEditor(ex, idx);
         });
     });
+
+    // 教学观看追踪：滚动到内容底部时，标记「看完教学」（占掌握度 10%）
+    const endMarker = container.querySelector('.note');
+    if (endMarker && window.IntersectionObserver) {
+        const observer = new IntersectionObserver((entries) => {
+            if (entries[0].isIntersecting) {
+                const prog = appState.chapterProgress[chapter.id];
+                if (prog && !prog.teachingWatched) {
+                    prog.teachingWatched = 100;
+                    refreshChapterMastery(chapter.id);
+                    saveProgress();
+                }
+                observer.disconnect();
+            }
+        }, { threshold: 0.3 });
+        observer.observe(endMarker);
+    }
 }
 
 // 针对章节内容的集中练习（使用现有键盘答题系统）
@@ -1464,18 +1481,34 @@ function completeTriadPractice() {
 }
 // 各练习题型每题满分（10 题，每题 10 分 = 100）
 const PRACTICE_PER_QUESTION = { listen: 10, build: 10, arrange: 10, upper: 10, fourpart: 10 };
-// 计算章节掌握度：练习各题型（百分制取最高）+ 习题（百分制取最高）的平均值
-function computeChapterMastery(chapterId) {
-    const prog = appState.chapterProgress[chapterId];
-    if (!prog || !prog.scores) return 0;
+// 练习得分：各练习题型（百分制取最高）的平均值
+function computePracticeScore(prog) {
     const scores = [];
     for (const type in PRACTICE_PER_QUESTION) {
         const arr = prog.scores[type] || [];
         if (arr.length) scores.push(Math.max(...arr) * PRACTICE_PER_QUESTION[type]);
     }
-    const hw = prog.scores.homework || [];
-    if (hw.length) scores.push(Math.max(...hw));
     return scores.length ? Math.round(scores.reduce((a, b) => a + b, 0) / scores.length) : 0;
+}
+// 习题得分：各习题小题（百分制取最高）的平均值（兼容旧数组数据：取最高）
+function computeHomeworkScore(prog) {
+    const hw = prog.scores.homework;
+    if (!hw) return 0;
+    if (Array.isArray(hw)) {
+        const arr = hw.filter(v => typeof v === 'number');
+        return arr.length ? Math.round(Math.max(...arr)) : 0;
+    }
+    const values = Object.values(hw).filter(v => typeof v === 'number' && !isNaN(v));
+    return values.length ? Math.round(values.reduce((a, b) => a + b, 0) / values.length) : 0;
+}
+// 章节掌握度 = 教学观看 10% + 练习 40% + 习题 50%
+function computeChapterMastery(chapterId) {
+    const prog = appState.chapterProgress[chapterId];
+    if (!prog) return 0;
+    const teaching = prog.teachingWatched || 0;
+    const practice = computePracticeScore(prog);
+    const homework = computeHomeworkScore(prog);
+    return Math.round(teaching * 0.1 + practice * 0.4 + homework * 0.5);
 }
 // 刷新章节掌握度与通关状态：掌握度 ≥ 70% 视为通关
 function refreshChapterMastery(chapterId) {
@@ -2993,19 +3026,18 @@ function hwRunCheck() {
     hwState.checkResults = results;
     hwRender();
     hwShowCheckSummary(results);
-    // 习题得分计入章节掌握度（百分制，取最高保留 5 次）
+    // 习题得分计入章节掌握度（每个小题单独记录百分制得分，取最高）
     if (appState.currentChapter) {
         const chapterId = appState.currentChapter.id;
         const prog = appState.chapterProgress[chapterId];
         if (prog) {
             if (!prog.scores) prog.scores = {};
-            prog.scores.homework = prog.scores.homework || [];
+            if (!prog.scores.homework || Array.isArray(prog.scores.homework)) prog.scores.homework = {};
             const total = results.reduce((sum, r) => sum + (r && r.score ? r.score : 0), 0);
             const full = results.length * 5;
             const percent = full ? Math.round(total / full * 100) : 0;
-            prog.scores.homework.push(percent);
-            prog.scores.homework.sort((a, b) => b - a);
-            prog.scores.homework = prog.scores.homework.slice(0, 5);
+            const key = (typeof hwCurrentExerciseIndex === 'number' && hwCurrentExerciseIndex >= 0) ? hwCurrentExerciseIndex : 'all';
+            prog.scores.homework[key] = Math.max(prog.scores.homework[key] || 0, percent);
             refreshChapterMastery(chapterId);
             saveProgress();
         }
@@ -3282,6 +3314,7 @@ function hwSvgPoint(svg, clientX, clientY) {
     return { x: (clientX - rect.left) / scale, y: (clientY - rect.top) / scale };
 }
 let hwCurrentQuestion = '';
+let hwCurrentExerciseIndex = -1;
 function hwRenderQuestion() {
     const el = document.getElementById('hw-question');
     if (!el) return;
@@ -3293,9 +3326,10 @@ function hwRenderQuestion() {
         el.innerHTML = '';
     }
 }
-function hwOpenHomeworkEditor(questionText) {
+function hwOpenHomeworkEditor(questionText, exerciseIndex) {
     if (!appState.userInfo.saved) { alert('请先保存学生信息'); return; }
     hwCurrentQuestion = questionText || '';
+    hwCurrentExerciseIndex = (typeof exerciseIndex === 'number') ? exerciseIndex : -1;
     hwResetState();
     hwBuildKeySelect();
     hwBuildFuncButtons();
