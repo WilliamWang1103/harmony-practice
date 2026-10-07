@@ -2330,6 +2330,9 @@ const pageManager = {
         if (pageId === 'chapter-practice-page') {
             setTimeout(() => renderBlankStaff(), 50);
         }
+        if (pageId === 'zheng-san-page') {
+            updateStats(); renderZhengSanHub();
+        }
     }
 };
 function handleModeSelection(mode) {
@@ -2883,11 +2886,13 @@ function hwIntervalCategory(a, b) {
 }
 function hwCheckChord(m, lbl) {
     const errors = [];
+    let score = 0;
     const chord = hwChordFromBeat(m, lbl.beat);
-    if (chord.missing) { errors.push('该拍位四声部不完整'); return { m, beat: lbl.beat, ok: false, errors }; }
+    if (chord.missing) { errors.push('该拍位四声部不完整'); return { m, beat: lbl.beat, ok: false, errors, score: 0 }; }
     const parsed = chord.parsed;
     const ident = hwIdentifyChord(parsed);
-    if (ident.root == null) { errors.push('无法识别为和弦'); return { m, beat: lbl.beat, ok: false, errors }; }
+    if (ident.root == null) { errors.push('无法识别为和弦'); return { m, beat: lbl.beat, ok: false, errors, score: 0 }; }
+    score = 4; // 四声部完整且构成合法和弦：音部分 4 分
     const tonic = hwKeyTonicPc();
     const deg = ((ident.root - tonic) % 12 + 12) % 12;
     const majorKey = HW_KEY_OPTIONS[hwState.keyIndex].major;
@@ -2919,21 +2924,22 @@ function hwCheckChord(m, lbl) {
     }
     const info = { func: actualFunc, inv: actualInv, third, fifth };
     const [S, A, T, B] = parsed.map(p => p.midi);
-    if (S < A || A < T || T < B) errors.push('声部交叉');
-    if (S - A > 12) errors.push('高音-中音＞八度');
-    if (A - T > 12) errors.push('中音-次中音＞八度');
-    if (T - B > 24) errors.push('次中音-低音＞两个八度');
+    if (S < A || A < T || T < B) { errors.push('声部交叉'); score -= 1; }
+    if (S - A > 12) { errors.push('高音-中音＞八度'); score -= 1; }
+    if (A - T > 12) { errors.push('中音-次中音＞八度'); score -= 1; }
+    if (T - B > 24) { errors.push('次中音-低音＞两个八度'); score -= 1; }
     const expectedBass = hwExpectedBassPc(lbl.func, lbl.inv);
-    if (expectedBass != null && bass.pc !== expectedBass) errors.push('低音错');
-    if (!hwCheckLabelMatch(lbl, info)) errors.push('标记与和弦不符');
+    if (expectedBass != null && bass.pc !== expectedBass) { errors.push('低音错'); score -= 1; }
+    if (hwCheckLabelMatch(lbl, info)) { score += 1; } // 标记正确 +1 分
+    else errors.push('标记与和弦不符');
     const doubled = hwDoubledPc(parsed);
     if (ident.kind === 'triad' && doubled != null) {
         const leading = ((tonic + 11) % 12 + 12) % 12;
-        if (info.inv === '6' && doubled === info.third) errors.push('六和弦重复了三音');
-        if (info.inv === '64' && doubled !== info.fifth) errors.push('四六和弦应重复五音');
-        if (info.inv === 'none' && doubled === leading) errors.push('重复了导音');
+        if (info.inv === '6' && doubled === info.third) { errors.push('六和弦重复了三音'); score -= 1; }
+        if (info.inv === '64' && doubled !== info.fifth) { errors.push('四六和弦应重复五音'); score -= 1; }
+        if (info.inv === 'none' && doubled === leading) { errors.push('重复了导音'); score -= 1; }
     }
-    return { m, beat: lbl.beat, ok: errors.length === 0, errors };
+    return { m, beat: lbl.beat, ok: errors.length === 0, errors, score: Math.max(0, score) };
 }
 function hwRunCheck() {
     const labeled = [];
@@ -2965,7 +2971,7 @@ function hwRunCheck() {
                 const d2 = cv[y].midi - pv[y].midi;
                 if (d1 !== 0 && d2 !== 0 && ((d1 > 0 && d2 > 0) || (d1 < 0 && d2 < 0))) parallel = true;
             });
-            if (parallel && results[i] && results[i].errors) { results[i].errors.push('与前和弦平行五/八度'); results[i].ok = false; }
+            if (parallel && results[i] && results[i].errors) { results[i].errors.push('与前和弦平行五/八度'); results[i].ok = false; results[i].score = Math.max(0, (results[i].score || 0) - 1); }
         } catch (e) { /* 单个和弦的平行检测失败不影响整体 */ }
     }
     hwState.checkResults = results;
@@ -2976,11 +2982,15 @@ function hwShowCheckSummary(results) {
     const el = document.getElementById('hw-check-summary');
     if (!el) return;
     if (!results.length) { el.innerHTML = '<div>尚未放置和弦标记，无法检查。请先用「标记」模式点拍位放置 T/S/D。</div>'; return; }
-    el.innerHTML = results.map(r => {
+    const total = results.reduce((sum, r) => sum + (r && r.score ? r.score : 0), 0);
+    const full = results.length * 5;
+    const header = '<div class="hw-score-total">总分：' + total + ' / ' + full + ' 分</div>';
+    el.innerHTML = header + results.map(r => {
         if (!r) return '';
         const loc = '第' + (r.m + 1) + '小节 第' + (Math.floor(r.beat) + 1) + '拍';
-        if (r.ok) return '<div class="hw-ok">✓ ' + loc + '：正确</div>';
-        return '<div class="hw-bad">✗ ' + loc + '：' + (r.errors || []).join('；') + '</div>';
+        const s = r.score != null ? r.score : 0;
+        if (r.ok) return '<div class="hw-ok">✓ ' + loc + '：正确（' + s + '分）</div>';
+        return '<div class="hw-bad">✗ ' + loc + '：' + (r.errors || []).join('；') + '（' + s + '分）</div>';
     }).join('');
 }
 let hwPlaybackAnimId = null;

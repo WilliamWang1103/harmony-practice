@@ -1211,6 +1211,13 @@ body {
     line-height: 1.6;
 }
 
+.hw-check-summary .hw-score-total {
+    font-size: 15px;
+    font-weight: 700;
+    color: #7b1fa2;
+    margin-bottom: 6px;
+}
+
 .hw-check-summary .hw-ok {
     color: #2e7d32;
     margin-bottom: 4px;
