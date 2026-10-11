@@ -3201,7 +3201,22 @@ function practiceExportImage() {
     const build = document.getElementById('triad-build-staff');
     if (fourpart && fourpart.style.display !== 'none') svg = fourpart.querySelector('svg');
     if (!svg && build && build.style.display !== 'none') svg = build.querySelector('svg');
-    if (!svg) { alert('当前题型没有可导出的谱面'); return; }
+    if (!svg) {
+        // 无谱面题型（听辨三和弦 / 判断排列法等）：收集文字信息并导出文字卡片
+        const _ui = appState.userInfo || {};
+        const _chTitle = appState.currentChapter ? appState.currentChapter.title : '随堂练习';
+        const _qEl = document.getElementById('practice-question');
+        const _qText = _qEl ? (_qEl.textContent || '').replace(/\s+/g, ' ').trim() : '';
+        const _scoreEl = document.getElementById('practice-score');
+        const _correctEl = document.getElementById('practice-correct');
+        const _wrongEl = document.getElementById('practice-wrong');
+        const _progressEl = document.getElementById('practice-progress');
+        const _statsLine = '得分：' + (_scoreEl ? _scoreEl.textContent : '0') + '    正确：' + (_correctEl ? _correctEl.textContent : '0') + '    错误：' + (_wrongEl ? _wrongEl.textContent : '0') + '    进度：' + (_progressEl ? _progressEl.textContent : '0');
+        const _fbEl = document.getElementById('practice-feedback');
+        const _fbText = _fbEl ? (_fbEl.textContent || '').replace(/\s+/g, ' ').trim() : '';
+        exportPracticeTextCard(_chTitle, _ui, _statsLine, _qText, _fbText);
+        return;
+    }
     const svgW = svg.width.baseVal.value || 400;
     const svgH = svg.height.baseVal.value || 200;
     const pad = 24, scale = 2;
@@ -3258,6 +3273,85 @@ function practiceExportImage() {
     };
     img.onerror = () => { alert('导出图片失败'); };
     img.src = url;
+}
+// canvas 文本按像素折行，返回每一行（仅测量，不绘制）
+function wrapLines(ctx, text, maxWidth) {
+    const chars = String(text).split('');
+    const lines = [];
+    let line = '';
+    for (let i = 0; i < chars.length; i++) {
+        const test = line + chars[i];
+        if (ctx.measureText(test).width > maxWidth && line !== '') {
+            lines.push(line);
+            line = chars[i];
+        } else {
+            line = test;
+        }
+    }
+    if (line) lines.push(line);
+    return lines;
+}
+// 把绘制好的 canvas 下载为 PNG
+function downloadCanvasPng(canvas, name, prefix) {
+    canvas.toBlob(blob => {
+        const a = document.createElement('a');
+        const fname = (name || '练习').replace(/[\\/:*?"<>|]/g, '_');
+        a.href = URL.createObjectURL(blob);
+        a.download = (prefix || '随堂练习') + '_' + fname + '_' + Date.now() + '.png';
+        a.click();
+        setTimeout(() => URL.revokeObjectURL(a.href), 3000);
+    }, 'image/png');
+}
+// 无谱面题型导出：仅用文字信息（题目/作答结果/记分板）生成一张 PNG 卡片
+function exportPracticeTextCard(chTitle, ui, statsLine, qText, fbText) {
+    const pad = 24, scale = 2, contentW = 720;
+    const maxTextW = contentW - pad * 2;
+    const probe = document.createElement('canvas').getContext('2d');
+
+    const titleText = chTitle + ' · ' + practiceTypeLabel();
+    const infoText = '姓名：' + (ui.name || '—') + '    指导教师：' + (ui.teacher || '—') + '    班级：' + (ui.majorClass || '—');
+    const timeText = '导出时间：' + hwFormatDateTime(new Date());
+    const noteText = '说明：本题型为听力 / 判断题，无五线谱谱面，故导出文字作答信息。';
+
+    const blocks = [];
+    blocks.push({ text: titleText, font: 'bold 20px -apple-system,PingFang SC,Microsoft YaHei,sans-serif', lineH: 30, color: '#6a1b9a' });
+    blocks.push({ text: infoText, font: '13px -apple-system,PingFang SC,Microsoft YaHei,sans-serif', lineH: 20, color: '#555' });
+    blocks.push({ text: statsLine, font: '13px -apple-system,PingFang SC,Microsoft YaHei,sans-serif', lineH: 20, color: '#555' });
+    blocks.push({ text: timeText, font: '13px -apple-system,PingFang SC,Microsoft YaHei,sans-serif', lineH: 20, color: '#555' });
+    if (qText) blocks.push({ text: '题目：' + qText, font: '13px -apple-system,PingFang SC,Microsoft YaHei,sans-serif', lineH: 20, color: '#333' });
+    if (fbText) blocks.push({ text: '作答结果：' + fbText, font: '13px -apple-system,PingFang SC,Microsoft YaHei,sans-serif', lineH: 20, color: '#333' });
+    blocks.push({ text: noteText, font: '13px -apple-system,PingFang SC,Microsoft YaHei,sans-serif', lineH: 20, color: '#999' });
+
+    let totalH = pad;
+    for (let i = 0; i < blocks.length; i++) {
+        probe.font = blocks[i].font;
+        blocks[i].lines = wrapLines(probe, blocks[i].text, maxTextW);
+        totalH += blocks[i].lines.length * blocks[i].lineH;
+        totalH += (i === 0 ? 18 : 6);
+    }
+    totalH += pad;
+
+    const canvas = document.createElement('canvas');
+    canvas.width = contentW * scale;
+    canvas.height = Math.ceil(totalH) * scale;
+    const ctx = canvas.getContext('2d');
+    ctx.scale(scale, scale);
+    ctx.fillStyle = '#fff';
+    ctx.fillRect(0, 0, contentW, Math.ceil(totalH));
+    ctx.textBaseline = 'top';
+    let ly = pad;
+    for (let i = 0; i < blocks.length; i++) {
+        const b = blocks[i];
+        ctx.fillStyle = b.color;
+        ctx.font = b.font;
+        for (let j = 0; j < b.lines.length; j++) {
+            ctx.fillText(b.lines[j], pad, ly);
+            ly += b.lineH;
+        }
+        ly += (i === 0 ? 18 : 6);
+    }
+
+    downloadCanvasPng(canvas, ui.name || '练习', '随堂练习');
 }
 function hwBuildKeySelect() {
     const sel = document.getElementById('hw-key-select');
