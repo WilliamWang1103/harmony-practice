@@ -1052,6 +1052,17 @@ body {
     letter-spacing: 2px;
 }
 
+/* 内嵌 HTML 示意图 / 功能图 */
+.ch-html-block {
+    margin: 12px 0;
+    text-align: center;
+}
+.ch-html-block svg {
+    display: inline-block;
+    max-width: 100%;
+    height: auto;
+}
+
 .ch-play-btn {
     margin-top: 8px;
     background: linear-gradient(135deg, #8e24aa, #6a1b9a);

@@ -428,6 +428,45 @@ const chapterContent = {
             { type: 'text', content: '建立在音阶的 I 级（主音）上的三和弦叫做主三和弦或主和弦。在多声部音乐中，这个三和弦是调式的主要支持，因为在适宜的旋律、节奏和节拍条件下，它可以表现出结束所必须的稳定性与乐思的完整性。主三和弦在大调中用 T 来标示，在小调中则用 t 来标示。' },
             { type: 'text', content: '音阶的 V 级上构成的三和弦称属三和弦或属和弦，用大写字母 D 标记；音阶的 IV 级上构成的三和弦称为下属三和弦或下属和弦，用大写字母 S 标记。' },
             { type: 'practice', label: '集中练习：识别调内正三和弦' },
+            {
+                type: 'html',
+                html: `<svg class="fn-diagram" viewBox="0 0 520 500" width="460" role="img" aria-label="正三和弦功能体系示意图" xmlns="http://www.w3.org/2000/svg">
+<g fill="none" stroke-linecap="round" stroke-linejoin="round">
+<line x1="260" y1="110" x2="170" y2="270" stroke="#b39ddb" stroke-width="1.5" stroke-dasharray="4 4"/>
+<line x1="260" y1="110" x2="350" y2="270" stroke="#b39ddb" stroke-width="1.5" stroke-dasharray="4 4"/>
+<line x1="260" y1="110" x2="80" y2="430" stroke="#6a1b9a" stroke-width="2"/>
+<line x1="260" y1="110" x2="440" y2="430" stroke="#6a1b9a" stroke-width="2"/>
+<line x1="80" y1="430" x2="440" y2="430" stroke="#6a1b9a" stroke-width="2"/>
+</g>
+<g font-family="-apple-system,PingFang SC,Microsoft YaHei,sans-serif">
+<circle cx="260" cy="110" r="17" fill="#7b1fa2"/>
+<circle cx="80" cy="430" r="17" fill="#7b1fa2"/>
+<circle cx="440" cy="430" r="17" fill="#7b1fa2"/>
+<circle cx="170" cy="270" r="16" fill="#fff" stroke="#7b1fa2" stroke-width="2"/>
+<circle cx="350" cy="270" r="16" fill="#fff" stroke="#7b1fa2" stroke-width="2"/>
+<circle cx="230" cy="163" r="16" fill="#fff" stroke="#7b1fa2" stroke-width="2"/>
+<circle cx="305" cy="190" r="16" fill="#fff" stroke="#7b1fa2" stroke-width="2"/>
+<g font-size="14" font-weight="700">
+<text x="260" y="110" text-anchor="middle" dominant-baseline="central" fill="#fff">I</text>
+<text x="80" y="430" text-anchor="middle" dominant-baseline="central" fill="#fff">IV</text>
+<text x="440" y="430" text-anchor="middle" dominant-baseline="central" fill="#fff">V</text>
+<text x="170" y="270" text-anchor="middle" dominant-baseline="central" fill="#7b1fa2">VI</text>
+<text x="350" y="270" text-anchor="middle" dominant-baseline="central" fill="#7b1fa2">III</text>
+<text x="230" y="163" text-anchor="middle" dominant-baseline="central" fill="#7b1fa2">VII</text>
+<text x="305" y="190" text-anchor="middle" dominant-baseline="central" fill="#7b1fa2">II</text>
+</g>
+<g font-size="13" fill="#555">
+<text x="260" y="80" text-anchor="middle">主</text>
+<text x="80" y="466" text-anchor="middle">下属</text>
+<text x="440" y="466" text-anchor="middle">属</text>
+<text x="132" y="274" text-anchor="end">下中</text>
+<text x="388" y="274" text-anchor="start">中</text>
+<text x="200" y="167" text-anchor="end">导</text>
+<text x="343" y="194" text-anchor="start">上主</text>
+</g>
+</g>
+</svg>`
+            },
             { type: 'heading', text: '三、功能标记' },
             { type: 'text', content: '在自然大调中，正三和弦标记为 T、S、D（均为大三和弦）；在和声小调中，标记为 t、s、D（主和弦与下属和弦为小三和弦，属和弦为大三和弦）。' },
             { type: 'text', content: '属三和弦与下属三和弦是最常见和最重要的在调式上不稳定的和弦。主和弦、属和弦与下属和弦称为正三和弦，因为它们反映了音响的调式特征。' },
@@ -988,6 +1027,9 @@ function loadChapterContent(chapter) {
         }
         if (block.type === 'practice') {
             return `<button class="btn ch-inline-practice" data-chapter-id="${chapter.id}"><i class="fas fa-dumbbell"></i> ${block.label}</button>`;
+        }
+        if (block.type === 'html') {
+            return `<div class="ch-html-block">${block.html}</div>`;
         }
         return '';
     }).join('');
