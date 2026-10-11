@@ -782,7 +782,7 @@ const appState = {
     currentMode: 'learn',
     currentLevel: 1,
     currentChapter: null,
-    levelSession: { level: 1, questions: [], currentIndex: 0, correct: 0, wrong: 0, score: 0, currentQuestion: null, selectedNote: null },
+    levelSession: { level: 1, questions: [], currentIndex: 0, correct: 0, wrong: 0, score: 0, currentQuestion: null, selectedNotes: [] },
     triadSession: null,
     fourPartSession: null,
     userInfo: { school: '', majorClass: '', name: '', teacher: '', saved: false },
@@ -1153,7 +1153,7 @@ function startChapterPractice(chapter) {
     // 默认使用 1 级调范围（C大调/a小调）进行集中练习
     appState.currentLevel = 1;
     const questions = Array(20).fill().map(() => generateQuestionForLevel(appState.currentLevel));
-    appState.levelSession = { level: appState.currentLevel, questions, currentIndex: 0, correct: 0, wrong: 0, score: 0, currentQuestion: questions[0], selectedNote: null };
+    appState.levelSession = { level: appState.currentLevel, questions, currentIndex: 0, correct: 0, wrong: 0, score: 0, currentQuestion: questions[0], selectedNotes: [] };
     appState.triadSession = null;
     appState.fourPartSession = null;
     appState.currentMode = 'practice';
@@ -2006,6 +2006,27 @@ function renderBlankStaff() {
         ctx.fillText(note.label, note.x + 8, note.y - 8);
     });
 }
+// 音名（如 'C#4'）→ MIDI 编号（C4=60）
+function noteToMidi(note) {
+    const m = /^([A-G])([#b]*)(-?\d+)$/.exec(note);
+    if (!m) return null;
+    const SEMIS = { C: 0, D: 2, E: 4, F: 5, G: 7, A: 9, B: 11 };
+    let acc = 0;
+    (m[2] || '').split('').forEach(c => acc += (c === '#' ? 1 : -1));
+    return (parseInt(m[3], 10) + 1) * 12 + SEMIS[m[1]] + acc;
+}
+// 将音移入小字一组（C4–B4，MIDI 60–71）：超界则整八度移位（转位无所谓）
+function shiftIntoC4B4(note) {
+    let n = note, guard = 0;
+    while (guard++ < 4) {
+        const midi = noteToMidi(n);
+        if (midi == null) break;
+        if (midi < 60) n = shiftOctave(n, 1);
+        else if (midi > 71) n = shiftOctave(n, -1);
+        else break;
+    }
+    return n;
+}
 function generateQuestionForLevel(level) {
     const keyRange = keyRanges[level];
     const randomKeyName = keyRange.keys[Math.floor(Math.random() * keyRange.keys.length)];
@@ -2013,17 +2034,24 @@ function generateQuestionForLevel(level) {
     const chordTypes = keyInfo.mode === 'major' ? ['T', 'S', 'D'] : ['t', 's', 'D'];
     const randomChord = chordTypes[Math.floor(Math.random() * chordTypes.length)];
     const chordNote = keyInfo.chords[randomChord];
-    let chordDisplay = randomChord === 'T' || randomChord === 't' ? '主和弦' : (randomChord === 'S' || randomChord === 's' ? '下属和弦' : '属和弦');
-    const answerNote = chordNote + '4';
-    const chordNotes = [answerNote, getChordThird(chordNote, 4), getChordFifth(chordNote, 4)].filter(n => n);
-    return { question: `在${keyInfo.name}中，请点击键盘上的${chordDisplay}的根音`, answerNote, keyName: keyInfo.name, chordDisplay, chordNotes };
+    const chordDisplay = randomChord === 'T' || randomChord === 't' ? '主和弦' : (randomChord === 'S' || randomChord === 's' ? '下属和弦' : '属和弦');
+    // 和弦性质：大调全为大三和弦；和声小调中 t、s 为小三和弦、D 为大三和弦
+    const isMajor = keyInfo.mode === 'major' || randomChord === 'D';
+    const rootNote = chordNote + '4';
+    const third = spellChordTone(rootNote, isMajor ? 4 : 3, 2);
+    const fifth = spellChordTone(rootNote, 7, 4);
+    // 三个答案音统一移入小字一组（C4–B4），原位/转位均可
+    const answerNotes = [rootNote, third, fifth].filter(Boolean).map(shiftIntoC4B4);
+    // 判分只看音级集合（忽略八度与转位）
+    const answerPcs = answerNotes.map(triadPitchClass).filter(pc => pc != null).sort((a, b) => a - b);
+    return { question: `在${keyInfo.name}中，请点击钢琴键盘上的${chordDisplay}的三个和弦音，小字一组范围内（C4-B4）`, answerPcs, answerNotes, keyName: keyInfo.name, chordDisplay, chordNotes: [rootNote, third, fifth].filter(Boolean) };
 }
 function getChordThird(root, oct) { const idx = allNotes.findIndex(n => n.note === root + oct); return idx >= 0 ? allNotes[idx + 4]?.note : null; }
 function getChordFifth(root, oct) { const idx = allNotes.findIndex(n => n.note === root + oct); return idx >= 0 ? allNotes[idx + 7]?.note : null; }
 function startPracticeMode() {
     if (!appState.userInfo.saved) { alert('请先保存学生信息'); return; }
     const questions = Array(20).fill().map(() => generateQuestionForLevel(appState.currentLevel));
-    appState.levelSession = { level: appState.currentLevel, questions, currentIndex: 0, correct: 0, wrong: 0, score: 0, currentQuestion: questions[0], selectedNote: null };
+    appState.levelSession = { level: appState.currentLevel, questions, currentIndex: 0, correct: 0, wrong: 0, score: 0, currentQuestion: questions[0], selectedNotes: [] };
     appState.triadSession = null;
     appState.currentMode = 'practice';
     document.getElementById('learn-content').style.display = 'none';
@@ -2034,7 +2062,7 @@ function loadPracticeQuestion() {
     const session = appState.levelSession;
     if (session.currentIndex >= session.questions.length) return completeLevel();
     session.currentQuestion = session.questions[session.currentIndex];
-    session.selectedNote = null;
+    session.selectedNotes = [];
     // 复位三和弦练习的 UI 元素，确保普通题型正常显示
     setPracticeTip('<i class="fas fa-lightbulb"></i> 请根据题目要求，点击钢琴键盘上的正确音高');
     document.getElementById('triad-type-selector').style.display = 'none';
@@ -2045,7 +2073,7 @@ function loadPracticeQuestion() {
     document.getElementById('show-answer-btn').style.display = 'none';
     document.getElementById('play-controls').style.display = 'flex';
     const q = session.currentQuestion;
-    document.getElementById('practice-question').innerHTML = `<div>${q.question}</div><div style="margin-top:8px;font-size:0.85rem;">🎹 请点击琴键选择答案</div>`;
+    document.getElementById('practice-question').innerHTML = `<div>${q.question}</div><div style="margin-top:8px;font-size:0.85rem;">🎹 请点击琴键选择三个和弦音（小字一组 C4-B4）</div>`;
     document.getElementById('practice-correct').textContent = session.correct;
     document.getElementById('practice-wrong').textContent = session.wrong;
     document.getElementById('practice-score').textContent = session.score;
@@ -2058,10 +2086,13 @@ function loadPracticeQuestion() {
 function submitPracticeAnswer() {
     const session = appState.levelSession;
     const q = session.currentQuestion;
-    if (!session.selectedNote) { document.getElementById('practice-feedback').innerHTML = '请先点击琴键选择一个答案！'; return; }
-    const isCorrect = session.selectedNote === q.answerNote;
-    if (isCorrect) { session.correct++; session.score += 5; document.getElementById('practice-feedback').innerHTML = `✅ 正确！正确答案是 ${q.answerNote}`; document.getElementById('practice-feedback').className = 'feedback-message correct'; }
-    else { session.wrong++; document.getElementById('practice-feedback').innerHTML = `❌ 错误！您点击了 ${session.selectedNote}，正确答案是 ${q.answerNote}`; document.getElementById('practice-feedback').className = 'feedback-message wrong'; }
+    const selected = session.selectedNotes || [];
+    if (selected.length < 3) { document.getElementById('practice-feedback').innerHTML = '请点击钢琴键盘选择三个和弦音（小字一组 C4-B4）！'; return; }
+    // 判分：比较音级集合（忽略八度与转位，原位/转位均可）
+    const selPcs = selected.map(triadPitchClass).filter(pc => pc != null).sort((a, b) => a - b);
+    const isCorrect = selPcs.length === q.answerPcs.length && selPcs.every((pc, i) => pc === q.answerPcs[i]);
+    if (isCorrect) { session.correct++; session.score += 5; document.getElementById('practice-feedback').innerHTML = `✅ 正确！正确答案是 ${q.answerNotes.join('、')}`; document.getElementById('practice-feedback').className = 'feedback-message correct'; }
+    else { session.wrong++; document.getElementById('practice-feedback').innerHTML = `❌ 错误！您点击了 ${selected.join('、')}，正确答案是 ${q.answerNotes.join('、')}`; document.getElementById('practice-feedback').className = 'feedback-message wrong'; }
     document.getElementById('practice-correct').textContent = session.correct;
     document.getElementById('practice-wrong').textContent = session.wrong;
     document.getElementById('practice-score').textContent = session.score;
@@ -2331,10 +2362,21 @@ function onPianoKeyPress(note, domElement) {
         return;
     }
     if (appState.currentMode === 'practice' && appState.levelSession) {
-        appState.levelSession.selectedNote = note;
+        const session = appState.levelSession;
+        if (!session.selectedNotes) session.selectedNotes = [];
+        const pc = triadPitchClass(note);
+        const midi = noteToMidi(note);
         const feedbackEl = document.getElementById('practice-feedback');
+        // 题目限定小字一组（C4–B4）：范围外的音仅提示，不计入选择
+        if (midi == null || midi < 60 || midi > 71) {
+            if (feedbackEl) { feedbackEl.innerHTML = '请在「小字一组」范围内（C4-B4）点击'; feedbackEl.className = 'feedback-message'; }
+            return;
+        }
+        if (session.selectedNotes.length < 3 && !session.selectedNotes.some(n => triadPitchClass(n) === pc)) {
+            session.selectedNotes.push(note);
+        }
         if (feedbackEl) {
-            feedbackEl.innerHTML = `已选择：${note}，请点击"提交答案"`;
+            feedbackEl.innerHTML = `已选择：${session.selectedNotes.join('、')}（${session.selectedNotes.length}/3），请点击"提交答案"`;
             feedbackEl.className = 'feedback-message';
         }
     }
