@@ -1519,7 +1519,12 @@ function submitTriadBuildAnswer() {
     document.getElementById('practice-feedback').innerHTML = feedback;
     document.getElementById('practice-feedback').className = 'feedback-message ' + (correct ? 'correct' : 'wrong');
     document.getElementById('submit-practice-btn').style.display = 'none';
-    document.getElementById('next-practice-btn').style.display = 'block';
+    if (s.currentIndex >= s.questions.length - 1) {
+        // 最后一题：答完自动完成并保存成绩（延迟，让用户先看到反馈）
+        setTimeout(() => completeTriadPractice(), 1200);
+    } else {
+        document.getElementById('next-practice-btn').style.display = 'block';
+    }
 }
 function completeTriadPractice() {
     const s = appState.triadSession;
@@ -1890,7 +1895,12 @@ function submitFourPartAnswer() {
     document.getElementById('practice-feedback').innerHTML = feedback;
     document.getElementById('practice-feedback').className = 'feedback-message ' + (correct ? 'correct' : 'wrong');
     document.getElementById('submit-practice-btn').style.display = 'none';
-    document.getElementById('next-practice-btn').style.display = 'block';
+    if (s.currentIndex >= s.questions.length - 1) {
+        // 最后一题：答完自动完成并保存成绩（延迟，让用户先看到反馈）
+        setTimeout(() => completeFourPartPractice(), 1200);
+    } else {
+        document.getElementById('next-practice-btn').style.display = 'block';
+    }
 }
 function resetFourPartAnswer() {
     const s = appState.fourPartSession;
