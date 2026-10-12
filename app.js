@@ -1162,6 +1162,7 @@ function startChapterPractice(chapter) {
     document.getElementById('learn-content').style.display = 'none';
     document.getElementById('homework-content').style.display = 'none';
     document.getElementById('practice-content').style.display = 'block';
+    updateBackBtnLabel();
     loadPracticeQuestion();
 }
 
@@ -1304,6 +1305,7 @@ function showTriadTypeSelector() {
         { type: 'build', cls: 'success', label: '🎹 构建三和弦' }
     ]);
     renderTriadScores();
+    updateBackBtnLabel();
 }
 function startTriadPractice(type) {
     if (type === 'listen') { startTriadListenPractice(); return; }
@@ -1317,6 +1319,7 @@ function startTriadPractice(type) {
     document.getElementById('play-controls').style.display = 'flex';
     document.getElementById('submit-practice-btn').style.display = 'block';
     document.getElementById('next-practice-btn').style.display = 'none';
+    updateBackBtnLabel();
     loadTriadQuestion();
 }
 function startTriadListenPractice() {
@@ -1344,6 +1347,7 @@ function startTriadListenPractice() {
     updateTriadListenStats();
     document.getElementById('practice-feedback').innerHTML = '';
     document.getElementById('practice-feedback').className = 'feedback-message';
+    updateBackBtnLabel();
 }
 function updateTriadListenStats() {
     const s = appState.triadSession;
@@ -1512,15 +1516,19 @@ function completeTriadPractice() {
     const s = appState.triadSession;
     const passed = s.correct >= 7;
     recordTriadScore(s.type, s.correct);
+    // 答完不自动退出：保留当前练习界面，让用户先导出结果，再点「返回上层」
     document.getElementById('practice-question').style.display = 'none';
     document.getElementById('triad-options').style.display = 'none';
     document.getElementById('triad-build-staff').style.display = 'none';
-    document.getElementById('play-controls').style.display = 'none';
-    document.getElementById('triad-type-selector').style.display = 'block';
+    // 保留「导出」按钮：隐藏答题相关按钮，让用户答完后仍可导出结果
+    document.getElementById('play-controls').style.display = 'flex';
+    ['play-question-btn', 'triad-random-btn', 'triad-melodic-btn', 'submit-practice-btn', 'show-answer-btn', 'next-practice-btn', 'reset-practice-btn'].forEach(id => {
+        const el = document.getElementById(id);
+        if (el) el.style.display = 'none';
+    });
     const emoji = passed ? '🎉' : '⚠️';
-    document.getElementById('practice-feedback').innerHTML = emoji + (passed ? ' 闯关成功！' : ' 未通过（需答对 7 题以上）') + ' 本次答对 ' + s.correct + '/10 题';
+    document.getElementById('practice-feedback').innerHTML = emoji + (passed ? ' 闯关成功！' : ' 未通过（需答对 7 题以上）') + ' 本次答对 ' + s.correct + '/10 题。可点「⬇ 导出」保存结果，再点「返回上层」退出。';
     document.getElementById('practice-feedback').className = 'feedback-message ' + (passed ? 'correct' : 'wrong');
-    appState.currentMode = 'triad-select';
     renderTriadScores();
 }
 // 各练习题型每题满分（10 题，每题 10 分 = 100）
@@ -1682,6 +1690,7 @@ function showFourPartTypeSelector() {
         { type: 'fourpart', cls: 'warning', label: '🎼 四部和声排列' }
     ]);
     renderFourPartScores();
+    updateBackBtnLabel();
 }
 function startFourPartPractice(type) {
     const gen = type === 'arrange' ? generateArrangeQuestion : (type === 'upper' ? generateUpperQuestion : generateFourPartQuestion);
@@ -1693,6 +1702,7 @@ function startFourPartPractice(type) {
     document.getElementById('play-controls').style.display = 'flex';
     document.getElementById('submit-practice-btn').style.display = 'block';
     document.getElementById('next-practice-btn').style.display = 'none';
+    updateBackBtnLabel();
     loadFourPartQuestion();
 }
 function loadFourPartQuestion() {
@@ -1892,16 +1902,20 @@ function completeFourPartPractice() {
     const s = appState.fourPartSession;
     const passed = s.correct >= 7;
     recordFourPartScore(s.type, s.correct);
+    // 答完不自动退出：保留当前练习界面，让用户先导出结果，再点「返回上层」
     document.getElementById('practice-question').style.display = 'none';
     document.getElementById('triad-options').style.display = 'none';
     document.getElementById('triad-build-staff').style.display = 'none';
     document.getElementById('fourpart-voice').style.display = 'none';
     document.getElementById('fourpart-staff').style.display = 'none';
-    document.getElementById('play-controls').style.display = 'none';
-    document.getElementById('triad-type-selector').style.display = 'block';
-    document.getElementById('practice-feedback').innerHTML = (passed ? '🎉 闯关成功！' : '⚠️ 未通过（需答对 7 题以上）') + ' 本次答对 ' + s.correct + '/10 题';
+    // 保留「导出」按钮：隐藏答题相关按钮，让用户答完后仍可导出结果
+    document.getElementById('play-controls').style.display = 'flex';
+    ['play-question-btn', 'triad-random-btn', 'triad-melodic-btn', 'submit-practice-btn', 'show-answer-btn', 'next-practice-btn', 'reset-practice-btn'].forEach(id => {
+        const el = document.getElementById(id);
+        if (el) el.style.display = 'none';
+    });
+    document.getElementById('practice-feedback').innerHTML = (passed ? '🎉 闯关成功！' : '⚠️ 未通过（需答对 7 题以上）') + ' 本次答对 ' + s.correct + '/10 题。可点「⬇ 导出」保存结果，再点「返回上层」退出。';
     document.getElementById('practice-feedback').className = 'feedback-message ' + (passed ? 'correct' : 'wrong');
-    appState.currentMode = 'fourpart-select';
     renderFourPartScores();
 }
 function recordFourPartScore(type, correct) {
@@ -1926,6 +1940,20 @@ function renderFourPartScores() {
     });
 }
 
+// 更新练习页返回按钮文字：题型选择页显示「返回教学」，具体练习页显示「返回上层」
+function updateBackBtnLabel() {
+    const btn = document.getElementById('back-to-teach-btn');
+    if (!btn) return;
+    const mode = appState.currentMode;
+    btn.innerHTML = '<i class="fas fa-arrow-left"></i> ' + ((mode === 'triad-select' || mode === 'fourpart-select') ? '返回教学' : '返回上层');
+}
+// 从具体练习页返回上一层的练习题型选择页
+function backToPracticeTypeSelector() {
+    const mode = appState.currentMode;
+    if (mode === 'triad-listen' || mode === 'triad-build') showTriadTypeSelector();
+    else if (mode === 'fourpart-arrange' || mode === 'fourpart-upper' || mode === 'fourpart-build') showFourPartTypeSelector();
+    else backToTeaching(); // 无题型选择页的练习（如等级练习）直接返回教学
+}
 function backToTeaching() {
     appState.currentMode = 'learn';
     appState.triadSession = null;
@@ -2058,6 +2086,7 @@ function startPracticeMode() {
     appState.currentMode = 'practice';
     document.getElementById('learn-content').style.display = 'none';
     document.getElementById('practice-content').style.display = 'block';
+    updateBackBtnLabel();
     loadPracticeQuestion();
 }
 function loadPracticeQuestion() {
@@ -3659,7 +3688,11 @@ document.addEventListener('DOMContentLoaded', () => {
     document.getElementById('back-from-zheng-san')?.addEventListener('click', () => pageManager.switchToPage('home-page'));
     document.getElementById('back-home-learn')?.addEventListener('click', () => { if (appState.returnTargetPage) pageManager.switchToPage(appState.returnTargetPage); else pageManager.switchToPage('home-page'); });
     document.getElementById('back-to-chapter-list')?.addEventListener('click', () => { pageManager.switchToPage('learn-page'); });
-    document.getElementById('back-to-teach-btn')?.addEventListener('click', backToTeaching);
+    document.getElementById('back-to-teach-btn')?.addEventListener('click', () => {
+        const mode = appState.currentMode;
+        if (mode === 'triad-select' || mode === 'fourpart-select') backToTeaching();
+        else backToPracticeTypeSelector();
+    });
     document.getElementById('submit-practice-btn')?.addEventListener('click', () => {
         if (appState.fourPartSession) { submitFourPartAnswer(); return; }
         if (appState.triadSession) submitTriadAnswer();
