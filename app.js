@@ -878,6 +878,8 @@ function loadProgress() {
     });
     keyRanges[1].unlocked = true;
     syncCourseUnlockChain();
+    // 用最新权重公式重新计算各章节掌握度（避免旧版本保存的 mastery 过期）
+    textbookChapters.forEach(ch => refreshChapterMastery(ch.id));
     saveProgress();
 }
 function saveProgress() {
@@ -1575,7 +1577,13 @@ function computeChapterMastery(chapterId) {
     const teaching = prog.teachingWatched || 0;
     const practice = computePracticeScore(prog);
     const homework = computeHomeworkScore(prog);
-    return Math.round(teaching * 0.1 + practice * 0.4 + homework * 0.5);
+    // 无习题章节：习题 50% 权重并入练习（避免习题空占权重拉低掌握度）
+    const content = chapterContent[chapterId];
+    const hasExercises = !!(content && content.exercises && content.exercises.length);
+    if (hasExercises) {
+        return Math.round(teaching * 0.1 + practice * 0.4 + homework * 0.5);
+    }
+    return Math.round(teaching * 0.1 + practice * 0.9);
 }
 // 刷新章节掌握度与通关状态：掌握度 ≥ 70% 视为通关
 function refreshChapterMastery(chapterId) {
