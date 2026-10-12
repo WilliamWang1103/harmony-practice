@@ -1611,7 +1611,7 @@ function renderTriadScores() {
         if (!el) return;
         const arr = scores[type] || [];
         const best = arr.length ? Math.max(...arr) : null;
-        el.textContent = best == null ? '未练习' : (best >= 7 ? '✅ 已通关' : '❌ 未通关（' + best + '/10）');
+        el.textContent = best == null ? '未练习' : (best >= 7 ? '✅ 已通关（' + best + '/10）' : '❌ 未通关（' + best + '/10）');
     });
 }
 
@@ -1967,7 +1967,7 @@ function renderFourPartScores() {
         if (!el) return;
         const arr = scores[type] || [];
         const best = arr.length ? Math.max(...arr) : null;
-        el.textContent = best == null ? '未练习' : (best >= 7 ? '✅ 已通关' : '❌ 未通关（' + best + '/10）');
+        el.textContent = best == null ? '未练习' : (best >= 7 ? '✅ 已通关（' + best + '/10）' : '❌ 未通关（' + best + '/10）');
     });
 }
 

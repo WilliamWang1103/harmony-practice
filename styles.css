@@ -668,7 +668,7 @@ body {
     position: fixed;
     bottom: 12px;
     right: 14px;
-    z-index: 2000;
+    z-index: 9999;
     background: linear-gradient(135deg, #9C27B0, #7B1FA2);
     color: #fff;
     border: none;
@@ -694,7 +694,7 @@ body {
     bottom: 0;
     left: 0;
     right: 0;
-    z-index: 999;
+    z-index: 998;
     overflow-x: auto;
     overflow-y: hidden;
     -webkit-overflow-scrolling: touch;
