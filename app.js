@@ -1107,7 +1107,7 @@ function openAnalysisExercise(chapter, item) {
                 const parsed = parseMusicXmlToMeasures(xml);
                 hwOpenAnalysisEditor(chapter, item, parsed);
             })
-            .catch(() => alert('谱例加载失败，请检查 MusicXML 文件'));
+            .catch(err => alert('谱例加载失败：' + (err && err.message ? err.message : err)));
     } else {
         alert('该谱例数据待提供');
     }
