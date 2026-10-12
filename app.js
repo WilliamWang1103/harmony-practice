@@ -1006,24 +1006,111 @@ function renderMusicXml(container, url) {
         container.innerHTML = '<p class="ch-text">谱例渲染库未加载</p>';
     }
 }
+// —— MusicXML → 习题编辑器小节数据（四声部钢琴缩编）——
+function hwKeyIndexFromFifths(fifths, mode) {
+    if (mode === 'minor') {
+        const map = { 0: 13, 1: 14, 2: 15, 3: 16, 4: 17, 5: 18, 6: 18, '-1': 19, '-2': 20, '-3': 21, '-4': 22, '-5': 23, '-6': 23 };
+        return map[fifths] != null ? map[fifths] : 13;
+    }
+    const map = { 0: 0, 1: 1, 2: 2, 3: 3, 4: 4, 5: 5, 6: 6, '-1': 7, '-2': 8, '-3': 9, '-4': 10, '-5': 11, '-6': 12 };
+    return map[fifths] != null ? map[fifths] : 0;
+}
+function hwDurFromUnits(units, divisions) {
+    const beats = divisions ? units / divisions : 1;
+    if (beats >= 4) return 'w';
+    if (beats >= 3) return 'hd';
+    if (beats >= 2) return 'h';
+    if (beats >= 1.5) return 'qd';
+    if (beats >= 1) return 'q';
+    if (beats >= 0.75) return '8d';
+    if (beats >= 0.5) return '8';
+    return '16';
+}
+function hwMusicXmlPitchToVex(pitch) {
+    const m = /^([A-G])([#b]*)(-?\d+)$/.exec(pitch || '');
+    if (!m) return null;
+    return m[1].toLowerCase() + (m[2] || '') + '/' + m[3];
+}
+function parseMusicXmlToMeasures(xmlText) {
+    const doc = new DOMParser().parseFromString(xmlText, 'application/xml');
+    const firstAttr = doc.querySelector('attributes');
+    const fifths = parseInt(firstAttr?.querySelector('key fifths')?.textContent || '0', 10);
+    const mode = firstAttr?.querySelector('key mode')?.textContent || 'major';
+    const beats = parseInt(firstAttr?.querySelector('time beats')?.textContent || '4', 10);
+    const beatType = parseInt(firstAttr?.querySelector('time beat-type')?.textContent || '4', 10);
+    const divisions = parseInt(firstAttr?.querySelector('divisions')?.textContent || '256', 10);
+    const keyIndex = hwKeyIndexFromFifths(fifths, mode);
+    const timeSig = beats + '/' + beatType;
+    const unitPerBeat = divisions || 256;
+
+    const measures = [];
+    doc.querySelectorAll('measure').forEach(measureEl => {
+        const m = { voices: { S: [], A: [], T: [], B: [] }, chordLabels: [] };
+        const staffNotes = { 1: [], 2: [] };
+        measureEl.querySelectorAll('note').forEach(noteEl => {
+            const staff = parseInt(noteEl.querySelector('staff')?.textContent || '1', 10);
+            const pitchEl = noteEl.querySelector('pitch');
+            const rest = !!noteEl.querySelector('rest');
+            const durUnits = parseInt(noteEl.querySelector('duration')?.textContent || '0', 10);
+            const chord = !!noteEl.querySelector('chord');
+            let pitch = null;
+            if (pitchEl) {
+                const step = pitchEl.querySelector('step')?.textContent || 'C';
+                const octave = pitchEl.querySelector('octave')?.textContent || '4';
+                const alter = pitchEl.querySelector('alter')?.textContent;
+                let acc = '';
+                if (alter === '1') acc = '#';
+                else if (alter === '-1') acc = 'b';
+                else if (alter === '-2') acc = 'bb';
+                else if (alter === '2') acc = '##';
+                pitch = step + acc + octave;
+            }
+            staffNotes[staff].push({ pitch, rest, durUnits, chord });
+        });
+
+        const staffChords = { 1: [], 2: [] };
+        [1, 2].forEach(staff => {
+            let beat = 0;
+            staffNotes[staff].forEach(n => {
+                if (n.chord && staffChords[staff].length) {
+                    staffChords[staff][staffChords[staff].length - 1].notes.push(n);
+                } else {
+                    staffChords[staff].push({ beat: Math.round(beat * 4) / 4, notes: [n], dur: hwDurFromUnits(n.durUnits, divisions) });
+                }
+                if (!n.chord) beat += n.durUnits / unitPerBeat;
+            });
+        });
+
+        const chordCount = Math.max(staffChords[1].length, staffChords[2].length);
+        for (let ci = 0; ci < chordCount; ci++) {
+            const c1 = staffChords[1][ci], c2 = staffChords[2][ci];
+            const beat = c1 ? c1.beat : (c2 ? c2.beat : 0);
+            const dur = c1 ? c1.dur : (c2 ? c2.dur : 'q');
+            const p1 = (c1?.notes || []).filter(n => n.pitch).map(n => n.pitch).sort((a, b) => noteToMidi(b) - noteToMidi(a));
+            const p2 = (c2?.notes || []).filter(n => n.pitch).map(n => n.pitch).sort((a, b) => noteToMidi(b) - noteToMidi(a));
+            if (p1[0]) m.voices.S.push({ pitch: hwMusicXmlPitchToVex(p1[0]), dur, beat });
+            if (p1[1]) m.voices.A.push({ pitch: hwMusicXmlPitchToVex(p1[1]), dur, beat });
+            if (p2[0]) m.voices.T.push({ pitch: hwMusicXmlPitchToVex(p2[0]), dur, beat });
+            if (p2[1]) m.voices.B.push({ pitch: hwMusicXmlPitchToVex(p2[1]), dur, beat });
+        }
+        measures.push(m);
+    });
+    return { measures, keyIndex, timeSig };
+}
 // 打开和声分析练习：渲染谱例 + 调标记/和弦标记留白
 function openAnalysisExercise(chapter, item) {
-    const modal = document.getElementById('analysis-modal');
-    const titleEl = document.getElementById('analysis-modal-title');
-    const scoreEl = document.getElementById('analysis-modal-score');
-    if (!modal || !titleEl || !scoreEl) return;
-    titleEl.textContent = (chapter.title || '') + ' · ' + (item.title || '和声分析');
-    scoreEl.innerHTML = '';
+    if (!appState.userInfo.saved) { alert('请先保存学生信息'); return; }
     if (item.musicxml) {
-        renderMusicXml(scoreEl, item.musicxml);
-    } else if (item.fourPart) {
-        renderFourPartScore(scoreEl, item.fourPart, item);
+        fetch(item.musicxml)
+            .then(r => { if (!r.ok) throw new Error('HTTP ' + r.status); return r.text(); })
+            .then(xml => {
+                const parsed = parseMusicXmlToMeasures(xml);
+                hwOpenAnalysisEditor(chapter, item, parsed);
+            })
+            .catch(() => alert('谱例加载失败，请检查 MusicXML 文件'));
     } else {
-        scoreEl.innerHTML = '<p class="ch-text">谱例数据待提供</p>';
+        alert('该谱例数据待提供');
     }
-    document.getElementById('analysis-key-input').value = '';
-    document.getElementById('analysis-chord-input').value = '';
-    modal.style.display = 'flex';
 }
 function loadChapterContent(chapter) {
     const container = document.getElementById('learn-content');
@@ -3666,6 +3753,25 @@ function hwOpenHomeworkEditor(questionText, exerciseIndex) {
     hwCurrentQuestion = questionText || '';
     hwCurrentExerciseIndex = (typeof exerciseIndex === 'number') ? exerciseIndex : -1;
     hwResetState();
+    hwBuildKeySelect();
+    hwBuildFuncButtons();
+    hwBuildInvButtons();
+    document.getElementById('learn-content').style.display = 'none';
+    document.getElementById('practice-content').style.display = 'none';
+    document.getElementById('homework-content').style.display = 'block';
+    appState.currentMode = 'homework';
+    hwRenderQuestion();
+    hwRender();
+}
+// 打开和声分析答题界面：复用习题编辑器的谱例渲染 + 调标记/和弦标记 + 撤销/清空/导出/播放/检查
+function hwOpenAnalysisEditor(chapter, item, parsed) {
+    if (!appState.userInfo.saved) { alert('请先保存学生信息'); return; }
+    hwCurrentQuestion = (chapter.title || '') + ' · ' + (item.title || '和声分析');
+    hwCurrentExerciseIndex = -1;
+    hwResetState();
+    hwState.measures = parsed.measures;
+    hwState.keyIndex = parsed.keyIndex;
+    hwState.timeSig = parsed.timeSig;
     hwBuildKeySelect();
     hwBuildFuncButtons();
     hwBuildInvButtons();
