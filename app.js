@@ -496,8 +496,8 @@ const chapterContent = {
             { type: 'text', content: '包括所有三种功能的进行称为完全进行（如 T—S—D—T）。根据功能顺序，和声进行又可分为正格（D—T、S—D—T）、半正格（T—D、S—D）、变格（S—T）和半变格（T—S）。' }
         ],
         analysisItems: [
-            { title: '吴式锴《和声分析351例》谱例1', musicxml: '03_功能体系/351_01.musicxml' },
-            { title: '吴式锴《和声分析351例》谱例2', musicxml: '03_功能体系/351_02.musicxml' }
+            { title: '吴式锴《和声分析351例》谱例1', musicxml: 'musicxml/03_功能体系/351_01.musicxml' },
+            { title: '吴式锴《和声分析351例》谱例2', musicxml: 'musicxml/03_功能体系/351_02.musicxml' }
         ],
         exercises: [
             '书面习题：在各个调上用四声部写出单独的 T、S 与 D 三和弦。',
