@@ -78,6 +78,46 @@ body {
     letter-spacing: 0.5px;
 }
 
+/* 导出图片预览（内嵌浏览器环境：长按保存） */
+.export-preview-modal {
+    position: fixed;
+    inset: 0;
+    background: rgba(0, 0, 0, 0.72);
+    z-index: 10000;
+    display: none;
+    align-items: center;
+    justify-content: center;
+    padding: 16px;
+}
+.export-preview-box {
+    background: #fff;
+    border-radius: 12px;
+    padding: 16px;
+    max-width: 92vw;
+    max-height: 90vh;
+    overflow: auto;
+    text-align: center;
+}
+.export-preview-title {
+    font-size: 16px;
+    font-weight: bold;
+    color: #333;
+    margin-bottom: 10px;
+}
+.export-preview-box img {
+    display: block;
+    max-width: 100%;
+    max-height: 66vh;
+    margin: 0 auto 12px;
+    border: 1px solid #eee;
+    border-radius: 8px;
+}
+.export-preview-hint {
+    font-size: 13px;
+    color: #d84315;
+    margin-bottom: 12px;
+}
+
 .container {
     width: 100%;
     max-width: 100%;

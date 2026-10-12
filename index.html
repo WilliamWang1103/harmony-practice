@@ -362,6 +362,17 @@
     <footer class="app-footer">© 2026 王向辉 · 内蒙古民族大学音乐学院 · 版权所有</footer>
 
     </div><!-- /app-wrapper -->
+
+    <!-- 导出图片预览（内嵌浏览器环境用：长按保存） -->
+    <div id="export-preview-modal" class="export-preview-modal" style="display:none;">
+        <div class="export-preview-box">
+            <div class="export-preview-title">📷 导出图片</div>
+            <img id="export-preview-img" alt="导出图片" />
+            <div class="export-preview-hint">长按图片，选择「保存图片」即可保存到相册</div>
+            <button id="export-preview-close" class="btn" type="button">关闭</button>
+        </div>
+    </div>
+
     <script src="lib/vexflow-min.js"></script>
     <script src="app.js"></script>
 </body>

@@ -3478,16 +3478,39 @@ function addExportWatermark(canvas) {
     ctx.fillText(text, w - 20, h - 16);
     ctx.restore();
 }
+// 检测是否处于内嵌浏览器（学习通/微信等 WebView）环境：这类环境对 a.download 支持不完整
+function isWebViewEnv() {
+    const ua = navigator.userAgent || '';
+    if (/MicroMessenger/i.test(ua)) return true;        // 微信
+    if (/chaoxing|SuperStar/i.test(ua)) return true;    // 学习通（超星）
+    if (/wxwork|DingTalk/i.test(ua)) return true;       // 企业微信 / 钉钉
+    if (/; wv\)/i.test(ua)) return true;                // Android WebView 通用标识
+    return false;
+}
+// 内嵌浏览器环境：弹出图片预览，提示长按保存（正常浏览器仍走下载）
+function showImagePreview(url) {
+    const modal = document.getElementById('export-preview-modal');
+    const img = document.getElementById('export-preview-img');
+    if (!modal || !img) return;
+    img.src = url;
+    modal.style.display = 'flex';
+}
 // 把绘制好的 canvas 下载为 PNG（baseName 不含扩展名，如「习题_20261011_1530」）
 function downloadCanvasPng(canvas, baseName, onDone) {
     addExportWatermark(canvas);
     canvas.toBlob(blob => {
-        const a = document.createElement('a');
-        a.href = URL.createObjectURL(blob);
-        a.download = baseName + '.png';
-        a.click();
-        setTimeout(() => URL.revokeObjectURL(a.href), 3000);
-        if (onDone) onDone();
+        const url = URL.createObjectURL(blob);
+        if (isWebViewEnv()) {
+            // 内嵌浏览器：弹预览让用户长按保存，不弹下载框
+            showImagePreview(url);
+        } else {
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = baseName + '.png';
+            a.click();
+            setTimeout(() => URL.revokeObjectURL(url), 3000);
+            if (onDone) onDone();
+        }
     }, 'image/png');
 }
 // 无谱面题型导出：仅用文字信息（题目/作答结果/记分板）生成一张 PNG 卡片
@@ -3760,6 +3783,12 @@ document.addEventListener('DOMContentLoaded', () => {
         else resetPractice();
     });
     document.getElementById('practice-export-btn')?.addEventListener('click', practiceExportImage);
+    document.getElementById('export-preview-close')?.addEventListener('click', () => {
+        const modal = document.getElementById('export-preview-modal');
+        const img = document.getElementById('export-preview-img');
+        if (modal) modal.style.display = 'none';
+        if (img) { URL.revokeObjectURL(img.src); img.removeAttribute('src'); }
+    });
     document.getElementById('play-question-btn')?.addEventListener('click', () => {
         const fp = appState.fourPartSession;
         if (fp && fp.currentQuestion) {
