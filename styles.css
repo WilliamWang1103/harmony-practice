@@ -668,7 +668,7 @@ body {
     position: fixed;
     bottom: 12px;
     right: 14px;
-    z-index: 1000;
+    z-index: 2000;
     background: linear-gradient(135deg, #9C27B0, #7B1FA2);
     color: #fff;
     border: none;

@@ -1163,6 +1163,7 @@ function startChapterPractice(chapter) {
     document.getElementById('homework-content').style.display = 'none';
     document.getElementById('practice-content').style.display = 'block';
     updateBackBtnLabel();
+    setStatsPanelVisible(true);
     loadPracticeQuestion();
 }
 
@@ -1275,6 +1276,11 @@ function setPracticeTip(html) {
     const tip = document.querySelector('#practice-content .practice-tip');
     if (tip) tip.innerHTML = html;
 }
+// 显示/隐藏练习记分板（题型选择页隐藏，具体练习页显示）
+function setStatsPanelVisible(visible) {
+    const el = document.querySelector('#practice-content .stats-panel-mini');
+    if (el) el.style.display = visible ? 'flex' : 'none';
+}
 function renderTypeButtons(buttons) {
     const wrap = document.getElementById('practice-type-btns');
     if (!wrap) return;
@@ -1306,6 +1312,7 @@ function showTriadTypeSelector() {
     ]);
     renderTriadScores();
     updateBackBtnLabel();
+    setStatsPanelVisible(false);
 }
 function startTriadPractice(type) {
     if (type === 'listen') { startTriadListenPractice(); return; }
@@ -1320,6 +1327,7 @@ function startTriadPractice(type) {
     document.getElementById('submit-practice-btn').style.display = 'block';
     document.getElementById('next-practice-btn').style.display = 'none';
     updateBackBtnLabel();
+    setStatsPanelVisible(true);
     loadTriadQuestion();
 }
 function startTriadListenPractice() {
@@ -1348,6 +1356,7 @@ function startTriadListenPractice() {
     document.getElementById('practice-feedback').innerHTML = '';
     document.getElementById('practice-feedback').className = 'feedback-message';
     updateBackBtnLabel();
+    setStatsPanelVisible(true);
 }
 function updateTriadListenStats() {
     const s = appState.triadSession;
@@ -1588,7 +1597,8 @@ function renderTriadScores() {
         const el = document.getElementById('triad-scores-' + type);
         if (!el) return;
         const arr = scores[type] || [];
-        el.textContent = arr.length ? ('最高成绩：' + arr.join('、') + ' 题') : '暂无成绩';
+        const best = arr.length ? Math.max(...arr) : null;
+        el.textContent = best == null ? '未练习' : (best >= 7 ? '✅ 已通关' : '❌ 未通关（' + best + '/10）');
     });
 }
 
@@ -1691,6 +1701,7 @@ function showFourPartTypeSelector() {
     ]);
     renderFourPartScores();
     updateBackBtnLabel();
+    setStatsPanelVisible(false);
 }
 function startFourPartPractice(type) {
     const gen = type === 'arrange' ? generateArrangeQuestion : (type === 'upper' ? generateUpperQuestion : generateFourPartQuestion);
@@ -1703,6 +1714,7 @@ function startFourPartPractice(type) {
     document.getElementById('submit-practice-btn').style.display = 'block';
     document.getElementById('next-practice-btn').style.display = 'none';
     updateBackBtnLabel();
+    setStatsPanelVisible(true);
     loadFourPartQuestion();
 }
 function loadFourPartQuestion() {
@@ -1936,7 +1948,8 @@ function renderFourPartScores() {
         const el = document.getElementById('triad-scores-' + type);
         if (!el) return;
         const arr = scores[type] || [];
-        el.textContent = arr.length ? ('最高成绩：' + arr.join('、') + ' 题') : '暂无成绩';
+        const best = arr.length ? Math.max(...arr) : null;
+        el.textContent = best == null ? '未练习' : (best >= 7 ? '✅ 已通关' : '❌ 未通关（' + best + '/10）');
     });
 }
 
@@ -2087,6 +2100,7 @@ function startPracticeMode() {
     document.getElementById('learn-content').style.display = 'none';
     document.getElementById('practice-content').style.display = 'block';
     updateBackBtnLabel();
+    setStatsPanelVisible(true);
     loadPracticeQuestion();
 }
 function loadPracticeQuestion() {
