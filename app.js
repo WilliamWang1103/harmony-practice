@@ -1002,6 +1002,43 @@ function openChapterFromHub(chapter) {
     setTimeout(() => { if (window.refreshPianoLayout) window.refreshPianoLayout(); }, 80);
 }
 
+// 获取和声分析题目列表（兼容旧 analysisExamples 数据）
+function getAnalysisItems(content) {
+    if (content.analysisItems && content.analysisItems.length) return content.analysisItems;
+    return (content.analysisExamples || []).map(ex => ({ title: ex.key || '谱例', fourPart: ex.fourPart, chords: ex.chords }));
+}
+// 用 OpenSheetMusicDisplay 渲染 MusicXML 谱例
+function renderMusicXml(container, url) {
+    if (window.opensheetmusicdisplay && window.opensheetmusicdisplay.OpenSheetMusicDisplay) {
+        const OSMD = window.opensheetmusicdisplay.OpenSheetMusicDisplay;
+        const osmd = new OSMD(container, { autoResize: true, backend: 'svg' });
+        fetch(url)
+            .then(r => { if (!r.ok) throw new Error('HTTP ' + r.status); return r.text(); })
+            .then(xml => osmd.load(xml).then(() => osmd.render()))
+            .catch(() => { container.innerHTML = '<p class="ch-text">谱例加载失败（请检查 MusicXML 文件）</p>'; });
+    } else {
+        container.innerHTML = '<p class="ch-text">谱例渲染库未加载</p>';
+    }
+}
+// 打开和声分析练习：渲染谱例 + 调标记/和弦标记留白
+function openAnalysisExercise(chapter, item) {
+    const modal = document.getElementById('analysis-modal');
+    const titleEl = document.getElementById('analysis-modal-title');
+    const scoreEl = document.getElementById('analysis-modal-score');
+    if (!modal || !titleEl || !scoreEl) return;
+    titleEl.textContent = (chapter.title || '') + ' · ' + (item.title || '和声分析');
+    scoreEl.innerHTML = '';
+    if (item.musicxml) {
+        renderMusicXml(scoreEl, item.musicxml);
+    } else if (item.fourPart) {
+        renderFourPartScore(scoreEl, item.fourPart, item);
+    } else {
+        scoreEl.innerHTML = '<p class="ch-text">谱例数据待提供</p>';
+    }
+    document.getElementById('analysis-key-input').value = '';
+    document.getElementById('analysis-chord-input').value = '';
+    modal.style.display = 'flex';
+}
 function loadChapterContent(chapter) {
     const container = document.getElementById('learn-content');
     if (!container) return;
@@ -1038,15 +1075,19 @@ function loadChapterContent(chapter) {
         return '';
     }).join('');
 
-    const hasAnalysis = content.analysis || (content.analysisExamples && content.analysisExamples.length);
+    const analysisItems = getAnalysisItems(content);
+    const hasAnalysis = content.analysis || analysisItems.length;
     const analysisHtml = hasAnalysis ? `
         <div class="ch-section">
             <h2 class="ch-section-title"><i class="fas fa-search"></i> 和声分析</h2>
             ${content.analysis ? `<p class="ch-text">${content.analysis}</p>` : ''}
-            ${(content.analysisExamples || []).map((ex, i) => `
-                <div class="analysis-example">
-                    <div class="ch-score analysis-score" data-analysis-idx="${i}"></div>
-                </div>`).join('')}
+            <ol class="ch-analysis-list">
+                ${analysisItems.map((item, i) => `
+                    <li>
+                        <span>${item.title || ('谱例' + (i + 1))}</span>
+                        <button class="btn btn-small ch-analysis-btn" data-chapter-id="${chapter.id}" data-analysis-idx="${i}"><i class="fas fa-edit"></i> 去练习</button>
+                    </li>`).join('')}
+            </ol>
         </div>` : '';
 
     const exercisesHtml = content.exercises && content.exercises.length ? `
@@ -1083,11 +1124,13 @@ function loadChapterContent(chapter) {
         else renderTriadScore(el, block.notes, block.duration);
     });
 
-    // 渲染和声分析谱例（静态 + 每行下方标注区）
-    document.querySelectorAll('.analysis-score').forEach(el => {
-        const idx = parseInt(el.dataset.analysisIdx);
-        const ex = content.analysisExamples && content.analysisExamples[idx];
-        if (ex) renderFourPartScore(el, ex.fourPart, ex);
+    // 绑定和声分析「去练习」按钮
+    document.querySelectorAll('.ch-analysis-btn').forEach(btn => {
+        btn.addEventListener('click', () => {
+            const idx = parseInt(btn.dataset.analysisIdx, 10);
+            const item = analysisItems[idx];
+            if (item) openAnalysisExercise(chapter, item);
+        });
     });
 
     // 绑定谱例播放按钮（支持进行：依次播放每个和弦）
@@ -3788,6 +3831,10 @@ document.addEventListener('DOMContentLoaded', () => {
         const img = document.getElementById('export-preview-img');
         if (modal) modal.style.display = 'none';
         if (img) { URL.revokeObjectURL(img.src); img.removeAttribute('src'); }
+    });
+    document.getElementById('analysis-close-btn')?.addEventListener('click', () => {
+        const modal = document.getElementById('analysis-modal');
+        if (modal) modal.style.display = 'none';
     });
     document.getElementById('play-question-btn')?.addEventListener('click', () => {
         const fp = appState.fourPartSession;

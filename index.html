@@ -373,6 +373,26 @@
         </div>
     </div>
 
+    <!-- 和声分析练习模态框（谱例 + 调标记/和弦标记留白） -->
+    <div id="analysis-modal" class="analysis-modal" style="display:none;">
+        <div class="analysis-modal-box">
+            <div class="analysis-modal-title" id="analysis-modal-title">和声分析</div>
+            <div id="analysis-modal-score" class="analysis-modal-score"></div>
+            <div class="analysis-field">
+                <label for="analysis-key-input">调标记</label>
+                <input id="analysis-key-input" type="text" placeholder="如：C 大调" />
+            </div>
+            <div class="analysis-field">
+                <label for="analysis-chord-input">和弦标记</label>
+                <textarea id="analysis-chord-input" rows="3" placeholder="如：T  S  D  T"></textarea>
+            </div>
+            <div class="analysis-modal-actions">
+                <button id="analysis-close-btn" class="btn" type="button">关闭</button>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/opensheetmusicdisplay@1.8.0/build/opensheetmusicdisplay.min.js"></script>
     <script src="lib/vexflow-min.js"></script>
     <script src="app.js"></script>
 </body>
