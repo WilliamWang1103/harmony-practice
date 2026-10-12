@@ -2268,7 +2268,6 @@ function buildNewPiano() {
         keyDiv.appendChild(topDiv);
         keyDiv.appendChild(bottomDiv);
         keyDiv.setAttribute('data-note', note);
-        keyDiv.addEventListener('mousedown', (e) => { e.stopPropagation(); onPianoKeyPress(note, keyDiv); });
         pianoDiv.appendChild(keyDiv);
         whiteKeyList.push(keyDiv);
         pianoKeyMap.set(note, keyDiv);
@@ -2307,7 +2306,6 @@ function buildNewPiano() {
                 bk.appendChild(sharpSpan);
                 bk.appendChild(flatSpan);
                 bk.setAttribute('data-note', black);
-                bk.addEventListener('mousedown', (e) => { e.stopPropagation(); onPianoKeyPress(black, bk); });
                 pianoDiv.appendChild(bk);
                 // 先加入 DOM 再读取实际宽度（响应式媒体查询下为 30px 或 26px）
                 const bw = bk.offsetWidth || 30;
@@ -2382,11 +2380,14 @@ function onPianoKeyPress(note, domElement) {
         }
     }
 }
+let pianoSlidePlayBound = false; // 防止重复绑定累积监听器（每次切换页面都会调用 initSlidePlay）
 function initSlidePlay() {
     const pianoArea = document.getElementById('pianoKeyboard');
-    if (!pianoArea) return;
+    if (!pianoArea || pianoSlidePlayBound) return;
+    pianoSlidePlayBound = true;
     // —— 触摸：区分「点击」（静止抬起发音）与「滑动」（移动不发音，仅滚动） ——
     let touchStartX = 0, touchStartY = 0, touchStartNote = null, isSwiping = false;
+    let suppressMouseUntil = 0; // 触摸抬起后短时间内忽略浏览器合成的 mouse 事件，避免重复触发
     pianoArea.addEventListener('touchstart', (e) => {
         const touch = e.touches[0];
         touchStartX = touch.clientX;
@@ -2407,10 +2408,11 @@ function initSlidePlay() {
             isSwiping = true;
         }
     }, { passive: true });
-    pianoArea.addEventListener('touchend', () => {
+    pianoArea.addEventListener('touchend', (e) => {
         if (!isSwiping && touchStartNote) {
             const key = pianoKeyMap.get(touchStartNote) || pianoArea.querySelector(`[data-note="${touchStartNote}"]`);
             onPianoKeyPress(touchStartNote, key || pianoArea);
+            suppressMouseUntil = Date.now() + 500; // 阻止随后由触摸合成的 mousedown 再次触发
         }
         touchStartNote = null;
         isSwiping = false;
@@ -2419,6 +2421,7 @@ function initSlidePlay() {
     let mouseDown = false;
     let lastNote = null;
     pianoArea.addEventListener('mousedown', (e) => {
+        if (Date.now() < suppressMouseUntil) return; // 忽略触摸合成的 mouse 事件
         mouseDown = true;
         let target = e.target.closest('[data-note]');
         if (target) {
@@ -2428,7 +2431,7 @@ function initSlidePlay() {
         }
     });
     window.addEventListener('mousemove', (e) => {
-        if (mouseDown) {
+        if (mouseDown && Date.now() >= suppressMouseUntil) {
             let els = document.elementsFromPoint(e.clientX, e.clientY);
             for (let el of els) {
                 if (el.getAttribute && el.getAttribute('data-note')) {
