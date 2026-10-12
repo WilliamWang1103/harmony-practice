@@ -3462,8 +3462,25 @@ function wrapLines(ctx, text, maxWidth) {
     if (line) lines.push(line);
     return lines;
 }
+// 导出图片右下角加水印（作者 + 时间），保护产权
+function addExportWatermark(canvas) {
+    const ctx = canvas.getContext('2d');
+    const w = canvas.width;
+    const h = canvas.height;
+    const text = '王向辉 · 内蒙古民族大学音乐学院 · ' + hwFormatDateTime(new Date());
+    const fontSize = Math.max(14, Math.round(h * 0.016));
+    ctx.save();
+    ctx.setTransform(1, 0, 0, 1, 0, 0);
+    ctx.fillStyle = 'rgba(123, 31, 162, 0.4)';
+    ctx.font = 'bold ' + fontSize + 'px -apple-system, PingFang SC, Microsoft YaHei, sans-serif';
+    ctx.textAlign = 'right';
+    ctx.textBaseline = 'alphabetic';
+    ctx.fillText(text, w - 20, h - 16);
+    ctx.restore();
+}
 // 把绘制好的 canvas 下载为 PNG（baseName 不含扩展名，如「习题_20261011_1530」）
 function downloadCanvasPng(canvas, baseName, onDone) {
+    addExportWatermark(canvas);
     canvas.toBlob(blob => {
         const a = document.createElement('a');
         a.href = URL.createObjectURL(blob);

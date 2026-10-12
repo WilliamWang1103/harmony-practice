@@ -67,6 +67,17 @@ body {
     }
 }
 
+/* 页脚版权说明 */
+.app-footer {
+    padding: 7px 12px;
+    text-align: center;
+    font-size: 11px;
+    color: rgba(255, 255, 255, 0.78);
+    background: rgba(0, 0, 0, 0.10);
+    flex-shrink: 0;
+    letter-spacing: 0.5px;
+}
+
 .container {
     width: 100%;
     max-width: 100%;
