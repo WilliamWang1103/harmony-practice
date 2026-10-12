@@ -910,6 +910,7 @@ function updateStats() {
         const scores = prog.scores || {};
         Object.keys(scores).forEach(type => {
             const arr = scores[type] || [];
+            if (!Array.isArray(arr)) return; // homework 等对象数据不参与「平均正确率」统计
             const perTotal = PRACTICE_TOTAL[type] || 10;
             arr.forEach(c => { totalCorrect += (c || 0); totalQuestions += perTotal; });
         });
@@ -3230,6 +3231,15 @@ function hwFileTimestamp(d) {
     const p = n => String(n).padStart(2, '0');
     return d.getFullYear() + p(d.getMonth() + 1) + p(d.getDate()) + '_' + p(d.getHours()) + p(d.getMinutes());
 }
+// 当前章节标题（去空格），用于导出文件名，如「02四部和声」
+function hwChapterShortTitle() {
+    return (appState.currentChapter ? appState.currentChapter.title : '').replace(/\s+/g, '');
+}
+// 从习题文本提取类型前缀（如「书面习题」「键盘习题」「口答习题」）
+function hwExerciseTypeLabel(questionText) {
+    const m = /^([^：:]+)[：:]/.exec(questionText || '');
+    return m ? m[1].trim() : '习题';
+}
 // 导出图片：表头（姓名/调性/拍号/时间）用 canvas 绘制，谱面 SVG 转图片，合成 PNG 下载
 function hwExportImage() {
     const svg = hwState && hwState.ui.svg;
@@ -3296,7 +3306,7 @@ function hwExportImage() {
     img.onload = () => {
         ctx.drawImage(img, pad, headH + 10, svgW, svgH);
         URL.revokeObjectURL(url);
-        downloadCanvasPng(canvas, '习题_' + hwFileTimestamp(new Date()), () => hwSetStatus('✅ 已导出图片'));
+        downloadCanvasPng(canvas, (hwChapterShortTitle() || '习题') + '_' + hwExerciseTypeLabel(hwCurrentQuestion) + '_' + hwFileTimestamp(new Date()), () => hwSetStatus('✅ 已导出图片'));
     };
     img.onerror = () => { hwSetStatus('导出图片失败', true); };
     img.src = url;
@@ -3369,7 +3379,7 @@ function practiceExportImage() {
     img.onload = () => {
         ctx.drawImage(img, pad, headH + 10, svgW, svgH);
         URL.revokeObjectURL(url);
-        downloadCanvasPng(canvas, '章节练习_' + hwFileTimestamp(new Date()));
+        downloadCanvasPng(canvas, (hwChapterShortTitle() || '章节练习') + '_' + practiceTypeLabel() + '_' + hwFileTimestamp(new Date()));
     };
     img.onerror = () => { alert('导出图片失败'); };
     img.src = url;
@@ -3451,7 +3461,7 @@ function exportPracticeTextCard(chTitle, ui, statsLine, qText, fbText) {
         ly += (i === 0 ? 18 : 6);
     }
 
-    downloadCanvasPng(canvas, '章节练习_' + hwFileTimestamp(new Date()));
+    downloadCanvasPng(canvas, (hwChapterShortTitle() || '章节练习') + '_' + practiceTypeLabel() + '_' + hwFileTimestamp(new Date()));
 }
 function hwBuildKeySelect() {
     const sel = document.getElementById('hw-key-select');

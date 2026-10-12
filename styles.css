@@ -59,6 +59,13 @@ body {
     /* 整体等比缩小，适配窄屏手机 */
     zoom: 0.85;
 }
+/* 手机端禁用 zoom：部分移动浏览器（尤其 iOS Safari）对 zoom 支持不完整，
+   会导致点击命中/输入框聚焦异常 */
+@media (max-width: 480px) {
+    .app-wrapper {
+        zoom: 1;
+    }
+}
 
 .container {
     width: 100%;
