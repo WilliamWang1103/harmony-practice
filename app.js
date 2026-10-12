@@ -3225,6 +3225,11 @@ function hwFormatDateTime(d) {
     const p = n => String(n).padStart(2, '0');
     return d.getFullYear() + '-' + p(d.getMonth() + 1) + '-' + p(d.getDate()) + ' ' + p(d.getHours()) + ':' + p(d.getMinutes());
 }
+// 文件名用时间戳（年月日_时分），不含冒号等非法字符，方便在电脑/手机上识别与排序
+function hwFileTimestamp(d) {
+    const p = n => String(n).padStart(2, '0');
+    return d.getFullYear() + p(d.getMonth() + 1) + p(d.getDate()) + '_' + p(d.getHours()) + p(d.getMinutes());
+}
 // 导出图片：表头（姓名/调性/拍号/时间）用 canvas 绘制，谱面 SVG 转图片，合成 PNG 下载
 function hwExportImage() {
     const svg = hwState && hwState.ui.svg;
@@ -3241,7 +3246,23 @@ function hwExportImage() {
     probe.font = '13px -apple-system,PingFang SC,Microsoft YaHei,sans-serif';
     const qText = hwCurrentQuestion ? hwCurrentQuestion.replace(/\s+/g, ' ').trim() : '';
     const qLines = qText ? Math.max(1, Math.ceil(probe.measureText('题目：' + qText).width / maxTextW)) : 0;
-    const headH = 90 + qLines * 20;
+
+    // —— 计分信息（若已点击「检查」）：得分 + 逐拍评价 ——
+    const checkResults = (hwState.checkResults || []).filter(Boolean);
+    const scoreLines = [];
+    if (checkResults.length) {
+        const total = checkResults.reduce((s, r) => s + (r.score || 0), 0);
+        const full = checkResults.length * 5;
+        scoreLines.push('得分：' + total + ' / ' + full + ' 分');
+        checkResults.forEach(r => {
+            const loc = '第' + (r.m + 1) + '小节 第' + (Math.floor(r.beat) + 1) + '拍';
+            const s = r.score != null ? r.score : 0;
+            if (r.ok) scoreLines.push('✓ ' + loc + '：正确（' + s + '分）');
+            else scoreLines.push('✗ ' + loc + '：' + (r.errors || []).join('；') + '（' + s + '分）');
+        });
+    }
+
+    const headH = 90 + qLines * 20 + scoreLines.length * 18;
     const canvasW = svgW + pad * 2;
     const canvasH = headH + svgH + pad * 2;
     const canvas = document.createElement('canvas');
@@ -3260,6 +3281,12 @@ function hwExportImage() {
     ctx.fillText('姓名：' + (ui.name || '—') + '    指导教师：' + (ui.teacher || '—') + '    班级：' + (ui.majorClass || '—'), pad, ly); ly += 20;
     if (qText) ly = wrapCanvasText(ctx, '题目：' + qText, pad, ly, maxTextW, 20);
     ctx.fillText('调式调性：' + keyName + '    拍号：' + hwState.timeSig + '    导出时间：' + hwFormatDateTime(new Date()), pad, ly); ly += 14;
+    // 计分信息（得分 + 逐拍评价）
+    if (scoreLines.length) {
+        ctx.fillStyle = '#7b1fa2';
+        scoreLines.forEach(line => { ctx.fillText(line, pad, ly); ly += 18; });
+        ctx.fillStyle = '#555';
+    }
     ctx.strokeStyle = '#7b1fa2'; ctx.lineWidth = 1.5;
     ctx.beginPath(); ctx.moveTo(pad, ly); ctx.lineTo(canvasW - pad, ly); ctx.stroke();
     const svgData = new XMLSerializer().serializeToString(svg);
@@ -3269,15 +3296,7 @@ function hwExportImage() {
     img.onload = () => {
         ctx.drawImage(img, pad, headH + 10, svgW, svgH);
         URL.revokeObjectURL(url);
-        canvas.toBlob(blob => {
-            const a = document.createElement('a');
-            const fname = (ui.name || '作业').replace(/[\\/:*?"<>|]/g, '_');
-            a.href = URL.createObjectURL(blob);
-            a.download = '和声作业_' + fname + '_' + Date.now() + '.png';
-            a.click();
-            setTimeout(() => URL.revokeObjectURL(a.href), 3000);
-            hwSetStatus('✅ 已导出图片');
-        }, 'image/png');
+        downloadCanvasPng(canvas, '习题_' + hwFileTimestamp(new Date()), () => hwSetStatus('✅ 已导出图片'));
     };
     img.onerror = () => { hwSetStatus('导出图片失败', true); };
     img.src = url;
@@ -3350,14 +3369,7 @@ function practiceExportImage() {
     img.onload = () => {
         ctx.drawImage(img, pad, headH + 10, svgW, svgH);
         URL.revokeObjectURL(url);
-        canvas.toBlob(blob => {
-            const a = document.createElement('a');
-            const fname = (ui.name || '练习').replace(/[\\/:*?"<>|]/g, '_');
-            a.href = URL.createObjectURL(blob);
-            a.download = '随堂练习_' + fname + '_' + Date.now() + '.png';
-            a.click();
-            setTimeout(() => URL.revokeObjectURL(a.href), 3000);
-        }, 'image/png');
+        downloadCanvasPng(canvas, '章节练习_' + hwFileTimestamp(new Date()));
     };
     img.onerror = () => { alert('导出图片失败'); };
     img.src = url;
@@ -3379,15 +3391,15 @@ function wrapLines(ctx, text, maxWidth) {
     if (line) lines.push(line);
     return lines;
 }
-// 把绘制好的 canvas 下载为 PNG
-function downloadCanvasPng(canvas, name, prefix) {
+// 把绘制好的 canvas 下载为 PNG（baseName 不含扩展名，如「习题_20261011_1530」）
+function downloadCanvasPng(canvas, baseName, onDone) {
     canvas.toBlob(blob => {
         const a = document.createElement('a');
-        const fname = (name || '练习').replace(/[\\/:*?"<>|]/g, '_');
         a.href = URL.createObjectURL(blob);
-        a.download = (prefix || '随堂练习') + '_' + fname + '_' + Date.now() + '.png';
+        a.download = baseName + '.png';
         a.click();
         setTimeout(() => URL.revokeObjectURL(a.href), 3000);
+        if (onDone) onDone();
     }, 'image/png');
 }
 // 无谱面题型导出：仅用文字信息（题目/作答结果/记分板）生成一张 PNG 卡片
@@ -3439,7 +3451,7 @@ function exportPracticeTextCard(chTitle, ui, statsLine, qText, fbText) {
         ly += (i === 0 ? 18 : 6);
     }
 
-    downloadCanvasPng(canvas, ui.name || '练习', '随堂练习');
+    downloadCanvasPng(canvas, '章节练习_' + hwFileTimestamp(new Date()));
 }
 function hwBuildKeySelect() {
     const sel = document.getElementById('hw-key-select');
