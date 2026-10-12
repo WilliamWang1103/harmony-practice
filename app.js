@@ -3780,7 +3780,11 @@ function hwOpenAnalysisEditor(chapter, item, parsed) {
     document.getElementById('homework-content').style.display = 'block';
     appState.currentMode = 'homework';
     hwRenderQuestion();
-    hwRender();
+    try {
+        hwRender();
+    } catch (e) {
+        alert('谱例渲染失败：' + (e && e.message ? e.message : e));
+    }
 }
 function hwSetMode(mode) {
     if (!hwState) return;
