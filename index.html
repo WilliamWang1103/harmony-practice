@@ -70,6 +70,17 @@
                                 class="pm-title">综合考试</span><span class="pm-desc">全面测评与和声分析</span></button>
                     </div>
                 </div>
+
+                <!-- 题库与考试入口 -->
+                <div class="quiz-entry-section">
+                    <h3 class="practice-mode-heading">📝 题库与考试</h3>
+                    <div class="quiz-entry-grid">
+                        <button id="quiz-student-entry" class="quiz-entry-btn student"><i
+                                class="fas fa-pen-to-square"></i><span>学生答题</span></button>
+                        <button id="quiz-teacher-entry" class="quiz-entry-btn teacher"
+                            style="display:none;"><i class="fas fa-gears"></i><span>题库管理</span></button>
+                    </div>
+                </div>
             </div>
         </div>
     </div>
@@ -192,6 +203,8 @@
                 <div id="homework-content" class="homework-content" style="display:none;">
                     <div class="hw-topbar">
                         <button id="hw-back-btn" class="hw-back-btn"><i class="fas fa-arrow-left"></i> 返回教学</button>
+                        <button id="hw-submit-quiz-btn" class="hw-back-btn" style="display:none; color:#2e7d32;"><i
+                                class="fas fa-check"></i> 完成本题并返回</button>
                     </div>
                     <div class="action-bar">
                         <button id="hw-play-btn">▶ 播放</button>
@@ -276,6 +289,7 @@
                     </div>
                     <div id="hw-status" class="hw-status"></div>
                     <div id="hw-question" class="hw-question" style="display:none;"></div>
+                    <div id="hw-quiz-img" class="hw-quiz-img" style="display:none;"></div>
                     <div id="hw-score" class="hw-score"></div>
                     <div id="hw-check-summary" class="hw-check-summary"></div>
                 </div>
@@ -358,6 +372,108 @@
         </div>
     </div>
 
+    <!-- 题库管理页面（老师端） -->
+    <div id="bank-manage-page" class="page">
+        <div class="container">
+            <div class="exercise-page">
+                <div class="status-bar" style="margin-bottom: 5px;">
+                    <button id="bank-manage-back" class="back-btn"
+                        style="background:transparent; color:#9C27B0;"><i class="fas fa-arrow-left"></i> 返回</button>
+                    <span class="current-datetime">📚 题库管理</span>
+                </div>
+                <h2 class="exercise-title">📚 题库管理</h2>
+                <div class="bank-toolbar">
+                    <select id="bank-chapter-select" class="form-input bank-select"></select>
+                    <button id="bank-import-btn" class="btn primary">📥 导入 Word 题库</button>
+                    <button id="bank-add-question-btn" class="btn success">＋ 新增题目</button>
+                    <button id="bank-export-file-btn" class="btn">📤 导出题库文件</button>
+                </div>
+                <div id="bank-score-bar" class="bank-score-bar">
+                    <span>本章总分：<b id="bank-total-score">0</b> 分 <span class="bank-score-target">（目标 100）</span></span>
+                    <button id="bank-auto-score-btn" class="btn btn-small">自动按 100 分调整</button>
+                </div>
+                <input type="file" id="bank-file-input" accept=".docx" multiple style="display:none;">
+                <div id="bank-import-hint" class="bank-hint"></div>
+                <div id="bank-question-list" class="bank-question-list"></div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 学生答题页面 -->
+    <div id="quiz-page" class="page">
+        <div class="container">
+            <div class="exercise-page">
+                <div class="status-bar" style="margin-bottom: 5px;">
+                    <button id="quiz-back" class="back-btn"
+                        style="background:transparent; color:#9C27B0;"><i class="fas fa-arrow-left"></i> 返回</button>
+                    <span class="current-datetime" id="quizClock">--:--:--</span>
+                </div>
+                <div id="quiz-chapter-select-wrap">
+                    <h2 class="exercise-title">📝 题库答题</h2>
+                    <p class="quiz-hint">请选择要作答的章节</p>
+                    <div id="quiz-chapter-list" class="quiz-chapter-list"></div>
+                </div>
+                <div id="quiz-question-wrap" style="display:none;">
+                    <h2 class="exercise-title" id="quiz-title">答题</h2>
+                    <div class="quiz-meta" id="quiz-meta"></div>
+                    <div class="quiz-question-card" id="quiz-question-card"></div>
+                    <div class="quiz-nav">
+                        <button id="quiz-prev-btn" class="btn secondary">上一题</button>
+                        <span id="quiz-progress" class="quiz-progress">1/1</span>
+                        <button id="quiz-next-btn" class="btn">下一题</button>
+                    </div>
+                    <div class="quiz-nav quiz-nav-center">
+                        <button id="quiz-sheet-btn" class="btn">📋 答题卡</button>
+                        <button id="quiz-submit-btn" class="btn success">交卷</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 题库答题结束页 -->
+    <div id="quiz-complete-page" class="page">
+        <div class="container">
+            <div class="test-end-page">
+                <div class="status-bar" style="margin-bottom: 5px;">
+                    <button id="quiz-complete-back" class="back-btn"
+                        style="background:transparent; color:#9C27B0;"><i class="fas fa-arrow-left"></i> 返回</button>
+                    <span class="current-datetime" id="quizCompleteClock">--:--:--</span>
+                </div>
+                <div class="test-end-header">
+                    <h2>🎉 交卷成功！</h2>
+                    <p id="quiz-complete-name">题库测试完成</p>
+                </div>
+                <div class="compact-user-info">
+                    <p><strong>学校：</strong><span id="quiz-end-school">—</span></p>
+                    <p><strong>专业班级：</strong><span id="quiz-end-major-class">—</span></p>
+                    <p><strong>姓名：</strong><span id="quiz-end-name">—</span></p>
+                    <p><strong>指导教师：</strong><span id="quiz-end-teacher">—</span></p>
+                </div>
+                <div class="score-summary">
+                    <div class="score-card total-score">
+                        <div class="score-value" id="quiz-total-score">0</div>
+                        <div class="score-label">总分</div>
+                    </div>
+                    <div class="score-card pitch-score">
+                        <div class="score-value" id="quiz-total-correct">0</div>
+                        <div class="score-label">正确题数</div>
+                    </div>
+                </div>
+                <div class="test-analysis-panel">
+                    <h3>📊 各题型得分</h3>
+                    <div id="quiz-type-scores" class="analysis-details"></div>
+                </div>
+                <div class="end-page-buttons">
+                    <button id="quiz-export-csv-btn" class="btn primary">⬇ 导出成绩(CSV)</button>
+                    <button id="quiz-export-img-btn" class="btn">🖼 导出图片</button>
+                    <button id="quiz-retry-btn" class="btn success">重新答题</button>
+                    <button id="quiz-complete-home" class="btn">返回首页</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
     <!-- 页脚版权说明 -->
     <footer class="app-footer">© 2026 王向辉 · 内蒙古民族大学音乐学院 · 版权所有</footer>
 
@@ -392,9 +508,80 @@
         </div>
     </div>
 
+    <!-- 题库题目编辑模态框（老师端） -->
+    <div id="quiz-edit-modal" class="quiz-edit-modal" style="display:none;">
+        <div class="quiz-edit-box">
+            <div class="quiz-edit-title" id="quiz-edit-title">新增题目</div>
+            <div class="quiz-edit-row">
+                <label>题型</label>
+                <select id="quiz-edit-type" class="form-input">
+                    <option value="choice">选择题</option>
+                    <option value="judge">判断题</option>
+                    <option value="link">连接题（五线谱）</option>
+                    <option value="analysis">分析题（文本）</option>
+                    <option value="harmonize">配和声（五线谱）</option>
+                </select>
+            </div>
+            <div class="quiz-edit-row">
+                <label>分值</label>
+                <input type="number" id="quiz-edit-score" class="form-input" value="2" min="0" step="0.5">
+            </div>
+            <div class="quiz-edit-row">
+                <label>题干</label>
+                <textarea id="quiz-edit-text" class="form-input" rows="2"></textarea>
+            </div>
+            <div class="quiz-edit-row">
+                <label>题目图片（可选）</label>
+                <input type="file" id="quiz-edit-img-file" accept="image/*">
+                <div id="quiz-edit-img-preview" class="quiz-edit-img-preview"></div>
+            </div>
+            <div class="quiz-edit-row" id="quiz-edit-options-row">
+                <label>选项（每行一个，如：A.选项内容）</label>
+                <textarea id="quiz-edit-options" class="form-input" rows="3"
+                    placeholder="A.选项A&#10;B.选项B&#10;C.选项C"></textarea>
+            </div>
+            <div class="quiz-edit-row" id="quiz-edit-answer-choice-row">
+                <label>正确答案</label>
+                <select id="quiz-edit-answer-choice" class="form-input"></select>
+            </div>
+            <div class="quiz-edit-row" id="quiz-edit-answer-judge-row" style="display:none;">
+                <label>正确答案</label>
+                <div class="quiz-judge-toggle">
+                    <button id="quiz-edit-answer-true" type="button" class="btn success">对</button>
+                    <button id="quiz-edit-answer-false" type="button" class="btn warning">错</button>
+                </div>
+            </div>
+            <div class="quiz-edit-row" id="quiz-edit-analysis-row" style="display:none;">
+                <label>参考答案（用于自动评分）</label>
+                <input id="quiz-edit-answer-key" class="form-input" placeholder="调式调性，如：G大调" style="margin-bottom:6px;">
+                <input id="quiz-edit-answer-chords" class="form-input" placeholder="和弦级数，如：T S D T（转位写 T6、D46 等）">
+            </div>
+            <div class="quiz-edit-actions">
+                <button id="quiz-edit-cancel" class="btn">取消</button>
+                <button id="quiz-edit-save" class="btn primary">保存</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- 答题卡模态框（交卷前核对/修改） -->
+    <div id="quiz-sheet-modal" class="quiz-edit-modal" style="display:none;">
+        <div class="quiz-edit-box">
+            <div class="quiz-edit-title">📋 答题卡</div>
+            <p class="quiz-sheet-hint">点击题号可跳转修改；确认无误后点「确认交卷」。</p>
+            <div id="quiz-sheet-list" class="quiz-sheet-list"></div>
+            <div class="quiz-edit-actions">
+                <button id="quiz-sheet-close" class="btn">继续答题</button>
+                <button id="quiz-sheet-submit" class="btn success">确认交卷</button>
+            </div>
+        </div>
+    </div>
+
     <script src="https://cdn.jsdelivr.net/npm/opensheetmusicdisplay@1.8.0/build/opensheetmusicdisplay.min.js"></script>
     <script src="lib/vexflow-min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/jszip@3.10.1/dist/jszip.min.js"></script>
     <script src="app.js"></script>
+    <script src="bank-data.js"></script>
+    <script src="quiz.js"></script>
 </body>
 
 </html>

@@ -2752,6 +2752,9 @@ function hwRestDuration(dur) { return dur + 'r'; }
 function hwRender() {
     const container = document.getElementById('hw-score');
     if (!container) return;
+    // 记录滚动位置，渲染后恢复，避免 SVG 重建导致页面「跳动」（遵循开发规则）
+    const hwScrollEl = document.getElementById('homework-content');
+    const savedScrollTop = hwScrollEl ? hwScrollEl.scrollTop : 0;
     container.innerHTML = '';
     hwPlaybackCursorEl = null;
     if (!vexFlowReady()) { hwSetStatus('❌ 未找到 lib/vexflow-min.js', true); return; }
@@ -2896,6 +2899,7 @@ function hwRender() {
     hwDrawChordLabels();
     hwDrawCheckResults();
     hwUpdateStatus();
+    if (hwScrollEl) hwScrollEl.scrollTop = savedScrollTop;
     hwScrollScoreIntoView();
 }
 // 钢琴展开时，自动滚动习题内容，让五线谱（hw-score）保持在钢琴上方，避免被遮挡
