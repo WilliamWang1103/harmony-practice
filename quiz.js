@@ -124,8 +124,7 @@ const Quiz = (function () {
     function makeQuestion(chapterId, type, score, text) {
         let answer;
         if (type === 'judge') answer = true;
-        else if (type === 'analysis') answer = { key: '', chords: '' };
-        else if (type === 'link') answer = { key: '', measures: ['', '', '', ''] };
+        else if (type === 'analysis') answer = { key: '', measures: ['', '', '', ''] };
         else answer = '';
         return {
             id: genId(), chapter: Number(chapterId), type, score: score || 2,
@@ -416,13 +415,10 @@ const Quiz = (function () {
             ? `<img src="${editState.imageDataUrl}" alt="预览"><button type="button" class="btn btn-small" id="quiz-edit-img-clear">移除图片</button>`
             : '';
 
-        const ansObj = (q && q.type === 'analysis' && q.answer && typeof q.answer === 'object') ? q.answer : { key: '', chords: '' };
+        const ansObj = (q && q.type === 'analysis' && q.answer && typeof q.answer === 'object') ? q.answer : { key: '', measures: ['', '', '', ''] };
         $('quiz-edit-answer-key').value = ansObj.key || '';
-        $('quiz-edit-answer-chords').value = ansObj.chords || '';
-        const linkAns = (q && q.type === 'link' && q.answer && typeof q.answer === 'object') ? q.answer : { key: '', measures: ['', '', '', ''] };
-        $('quiz-edit-link-key').value = linkAns.key || '';
-        ['quiz-edit-link-m1', 'quiz-edit-link-m2', 'quiz-edit-link-m3', 'quiz-edit-link-m4'].forEach((id, i) => {
-            $(id).value = (linkAns.measures && linkAns.measures[i]) || '';
+        ['quiz-edit-answer-m1', 'quiz-edit-answer-m2', 'quiz-edit-answer-m3', 'quiz-edit-answer-m4'].forEach((id, i) => {
+            $(id).value = (ansObj.measures && ansObj.measures[i]) || '';
         });
         syncEditTypeUI();
         renderAnswerOptions(q ? q.answer : '');
@@ -440,7 +436,6 @@ const Quiz = (function () {
         $('quiz-edit-answer-choice-row').style.display = (type === 'choice') ? '' : 'none';
         $('quiz-edit-answer-judge-row').style.display = (type === 'judge') ? '' : 'none';
         $('quiz-edit-analysis-row').style.display = (type === 'analysis') ? '' : 'none';
-        $('quiz-edit-link-row').style.display = (type === 'link') ? '' : 'none';
         updateJudgeButtons();
     }
 
@@ -485,11 +480,9 @@ const Quiz = (function () {
             if (obj.options.length < 2) { alert('选择题至少需要 2 个选项'); return; }
             obj.answer = $('quiz-edit-answer-choice').value;
         } else if (type === 'analysis') {
-            obj.answer = { key: $('quiz-edit-answer-key').value.trim(), chords: $('quiz-edit-answer-chords').value.trim() };
-        } else if (type === 'link') {
             obj.answer = {
-                key: $('quiz-edit-link-key').value.trim(),
-                measures: ['m1', 'm2', 'm3', 'm4'].map(s => $('quiz-edit-link-' + s).value.trim())
+                key: $('quiz-edit-answer-key').value.trim(),
+                measures: ['m1', 'm2', 'm3', 'm4'].map(s => $('quiz-edit-answer-' + s).value.trim())
             };
         }
 
@@ -548,23 +541,31 @@ const Quiz = (function () {
             body += `<div class="quiz-subj-score">${got != null ? '当前得分：<b>' + got + '</b> / ' + q.score + ' 分' : '尚未作答'}</div>` +
                 `<button class="quiz-subj-btn" data-act="open-subj">🎹 去作答（五线谱）</button>`;
         } else if (q.type === 'analysis') {
-            const curObj = (cur && typeof cur === 'object') ? cur : { key: '', chords: '' };
-            body += `<div class="quiz-analysis-row"><label>调式调性</label><input id="quiz-analysis-key" class="quiz-analysis-input" placeholder="如：G大调 / a小调" value="${escapeHtml(curObj.key || '')}"></div>` +
-                `<div class="quiz-analysis-row"><label>和弦级数</label><input id="quiz-analysis-chords" class="quiz-analysis-input" placeholder="如：T S D T（转位写 T6、D46 等）" value="${escapeHtml(curObj.chords || '')}"></div>`;
+            const curObj = (cur && typeof cur === 'object') ? cur : { key: '', measures: ['', '', '', ''] };
+            body += `<div class="quiz-analysis-row"><label>调式调性</label><input id="quiz-analysis-key" class="quiz-analysis-input" placeholder="如：C大调 / a小调" value="${escapeHtml(curObj.key || '')}"></div>`;
+            for (let i = 0; i < 4; i++) {
+                body += `<div class="quiz-analysis-row"><label>小节${i + 1} 和弦标记</label><input id="quiz-analysis-m${i + 1}" class="quiz-analysis-input" placeholder="如：T，T，D" value="${escapeHtml((curObj.measures && curObj.measures[i]) || '')}"></div>`;
+            }
         }
 
         $('quiz-question-card').innerHTML = body;
 
         if (q.type === 'analysis') {
             const keyInp = $('quiz-analysis-key');
-            const chordsInp = $('quiz-analysis-chords');
             const setAns = () => {
-                session.answers[q.id] = session.answers[q.id] || { key: '', chords: '' };
-                if (keyInp) session.answers[q.id].key = keyInp.value;
-                if (chordsInp) session.answers[q.id].chords = chordsInp.value;
+                const a = session.answers[q.id] || { key: '', measures: ['', '', '', ''] };
+                if (keyInp) a.key = keyInp.value;
+                for (let i = 0; i < 4; i++) {
+                    const m = $('quiz-analysis-m' + (i + 1));
+                    if (m) a.measures[i] = m.value;
+                }
+                session.answers[q.id] = a;
             };
             if (keyInp) keyInp.oninput = setAns;
-            if (chordsInp) chordsInp.oninput = setAns;
+            for (let i = 0; i < 4; i++) {
+                const m = $('quiz-analysis-m' + (i + 1));
+                if (m) m.oninput = setAns;
+            }
         }
 
         $('quiz-prev-btn').style.display = (session.index === 0) ? 'none' : '';
@@ -638,18 +639,12 @@ const Quiz = (function () {
         if (!session) return;
         const q = session.questions[session.index];
 
-        if (q.type === 'link') {
-            // 连接题：对比学生标的和弦标记 vs 参考答案（每小节标记序列）
-            session.answers[q.id] = quizLinkScore(q);
-        } else {
-            // 配和声：和声规则检查
-            if (!hwState.checkResults) hwRunCheck();
-            const results = hwState.checkResults || [];
-            const total = results.reduce((s, r) => s + (Number(r.score) || 0), 0);
-            const full = results.length * 5;
-            const percent = full ? (total / full) : 0;
-            session.answers[q.id] = Math.round(percent * Number(q.score) * 10) / 10;
-        }
+        if (!hwState.checkResults) hwRunCheck();
+        const results = hwState.checkResults || [];
+        const total = results.reduce((s, r) => s + (Number(r.score) || 0), 0);
+        const full = results.length * 5;
+        const percent = full ? (total / full) : 0;
+        session.answers[q.id] = Math.round(percent * Number(q.score) * 10) / 10;
 
         if (typeof appState !== 'undefined') appState.currentChapter = quizPrevChapter;
         document.getElementById('hw-submit-quiz-btn').style.display = 'none';
@@ -665,36 +660,15 @@ const Quiz = (function () {
         return a.length > 0 && a === b;
     }
 
-    // 连接题评分：把学生标的小节标记序列与参考答案逐小节对比
-    function quizLinkLabelStr(lbl) {
-        const func = lbl.func || '';
-        const inv = lbl.inv || 'none';
-        let invStr = '';
-        if (inv === '6') invStr = '6';
-        else if (inv === '64') invStr = '46';
-        else if (func === 'K') invStr = '46';
-        return func + invStr;
-    }
+    // 归一化标记序列（分析题逐小节对比用）
     function quizNormSeq(s) {
         return String(s || '').replace(/\s+/g, '').replace(/[，,、;；]/g, ',').replace(/64/g, '46').toLowerCase();
     }
-    function quizLinkSeqMatch(stuSeq, stdSeq) {
-        return quizNormSeq(stuSeq) === quizNormSeq(stdSeq);
-    }
-    function quizLinkScore(q) {
-        const stdMeasures = (q.answer && q.answer.measures) ? q.answer.measures : [];
-        const stuMeasures = hwState.measures.map(m =>
-            (m.chordLabels || []).slice().sort((a, b) => a.beat - b.beat)
-                .map(quizLinkLabelStr).join('，')
-        );
-        let matched = 0, total = 0;
-        stdMeasures.forEach((std, i) => {
-            if (std && std.trim()) {
-                total++;
-                if (quizLinkSeqMatch(stuMeasures[i], std)) matched++;
-            }
-        });
-        return total ? Math.round((matched / total) * Number(q.score) * 10) / 10 : 0;
+    function quizIsEmpty(ans) {
+        if (ans === undefined || ans === null) return true;
+        if (typeof ans === 'string') return ans.trim() === '';
+        if (typeof ans === 'object') return !((ans.key || '').trim() || (ans.measures || []).some(x => (x || '').trim()));
+        return false;
     }
 
     function quizPrev() { if (session && session.index > 0) { session.index--; quizRenderQuestion(); } }
@@ -718,9 +692,9 @@ const Quiz = (function () {
                     const ans = session.answers[q.id];
                     let status;
                     if (q.type === 'link' || q.type === 'harmonize') status = (typeof ans === 'number') ? (ans + ' 分') : '未答';
-                    else if (q.type === 'analysis') status = (typeof ans === 'string' && ans.trim()) ? '已答' : '未答';
+                    else if (q.type === 'analysis') status = quizIsEmpty(ans) ? '未答' : '已答';
                     else status = (ans === undefined || ans === '') ? '未答' : '已答';
-                    const empty = (ans === undefined || ans === null || (typeof ans === 'string' && ans.trim() === ''));
+                    const empty = quizIsEmpty(ans);
                     const text = (q.text || '').replace(/\s+/g, ' ').trim();
                     return `<button class="quiz-sheet-item ${empty ? 'empty' : 'done'}" data-index="${idx}">
                         <span class="quiz-sheet-no">${qs.indexOf(q) + 1}.</span>
@@ -744,10 +718,7 @@ const Quiz = (function () {
     function quizDoSubmit() {
         if (!session) return;
         $('quiz-sheet-modal').style.display = 'none';
-        const unanswered = session.questions.filter(q => {
-            const a = session.answers[q.id];
-            return (a === undefined || a === null || (typeof a === 'string' && a.trim() === ''));
-        }).length;
+        const unanswered = session.questions.filter(q => quizIsEmpty(session.answers[q.id])).length;
         if (unanswered > 0) {
             if (!confirm('还有 ' + unanswered + ' 题未作答，确定交卷吗？')) return;
         }
@@ -774,12 +745,20 @@ const Quiz = (function () {
                 got = (typeof ans === 'number') ? Math.max(0, Math.min(ans, q.score)) : 0;
                 isCorrect = got >= q.score * 0.6; // 主观题 ≥60% 记为达标
             } else if (q.type === 'analysis') {
-                const stu = (ans && typeof ans === 'object') ? ans : { key: '', chords: '' };
-                const std = (q.answer && typeof q.answer === 'object') ? q.answer : { key: '', chords: '' };
+                const stu = (ans && typeof ans === 'object') ? ans : { key: '', measures: ['', '', '', ''] };
+                const std = (q.answer && typeof q.answer === 'object') ? q.answer : { key: '', measures: ['', '', '', ''] };
                 const half = q.score / 2;
                 const keyOk = quizAnalysisMatch(stu.key, std.key);
-                const chordsOk = quizAnalysisMatch(stu.chords, std.chords);
-                got = Math.round(((keyOk ? half : 0) + (chordsOk ? half : 0)) * 10) / 10;
+                const stdMeasures = std.measures || [];
+                let matched = 0, total = 0;
+                stdMeasures.forEach((s, i) => {
+                    if (s && s.trim()) {
+                        total++;
+                        if (quizNormSeq((stu.measures && stu.measures[i]) || '') === quizNormSeq(s)) matched++;
+                    }
+                });
+                const chordRatio = total ? (matched / total) : 0;
+                got = Math.round(((keyOk ? half : 0) + (chordRatio * half)) * 10) / 10;
                 isCorrect = got >= q.score * 0.999;
             }
             ts.got += got;
