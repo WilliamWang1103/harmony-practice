@@ -747,19 +747,32 @@ const Quiz = (function () {
             } else if (q.type === 'analysis') {
                 const stu = (ans && typeof ans === 'object') ? ans : { key: '', measures: ['', '', '', ''] };
                 const std = (q.answer && typeof q.answer === 'object') ? q.answer : { key: '', measures: ['', '', '', ''] };
-                const half = q.score / 2;
-                const keyOk = quizAnalysisMatch(stu.key, std.key);
-                const stdMeasures = std.measures || [];
-                let matched = 0, total = 0;
-                stdMeasures.forEach((s, i) => {
-                    if (s && s.trim()) {
-                        total++;
-                        if (quizNormSeq((stu.measures && stu.measures[i]) || '') === quizNormSeq(s)) matched++;
-                    }
+
+                // 5 框均分：调性 1 框 + 小节1~4 各 1 框，每框 = q.score / 5
+                const boxScore = q.score / 5;
+                let got = 0, full = 0;
+
+                // 调性框
+                if (std.key && std.key.trim()) {
+                    full += boxScore;
+                    if (quizAnalysisMatch(stu.key, std.key)) got += boxScore;
+                }
+
+                // 每小节框：小节内按和弦数均摊该小节总分
+                (std.measures || []).forEach((s, i) => {
+                    if (!s || !s.trim()) return;
+                    const stdChords = s.split(/[，,、;；]/).map(x => x.trim()).filter(Boolean);
+                    if (!stdChords.length) return;
+                    full += boxScore;
+                    const stuChords = ((stu.measures && stu.measures[i]) || '').split(/[，,、;；]/).map(x => x.trim()).filter(Boolean);
+                    const perChord = boxScore / stdChords.length;
+                    stdChords.forEach((sc, ci) => {
+                        if (quizNormSeq(stuChords[ci] || '') === quizNormSeq(sc)) got += perChord;
+                    });
                 });
-                const chordRatio = total ? (matched / total) : 0;
-                got = Math.round(((keyOk ? half : 0) + (chordRatio * half)) * 10) / 10;
-                isCorrect = got >= q.score * 0.999;
+
+                got = Math.round(got * 10) / 10;
+                isCorrect = full > 0 && got >= full * 0.999;
             }
             ts.got += got;
             if (isCorrect) { ts.correct += 1; correct++; }
