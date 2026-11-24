@@ -122,11 +122,14 @@ const Quiz = (function () {
     }
 
     function makeQuestion(chapterId, type, score, text) {
+        let answer;
+        if (type === 'judge') answer = true;
+        else if (type === 'analysis') answer = { key: '', chords: '' };
+        else if (type === 'link') answer = { key: '', measures: ['', '', '', ''] };
+        else answer = '';
         return {
             id: genId(), chapter: Number(chapterId), type, score: score || 2,
-            text: text || '', image: '', options: [],
-            answer: type === 'judge' ? true : (type === 'analysis' ? { key: '', chords: '' } : ''),
-            answerImage: ''
+            text: text || '', image: '', options: [], answer, answerImage: ''
         };
     }
 
@@ -416,6 +419,11 @@ const Quiz = (function () {
         const ansObj = (q && q.type === 'analysis' && q.answer && typeof q.answer === 'object') ? q.answer : { key: '', chords: '' };
         $('quiz-edit-answer-key').value = ansObj.key || '';
         $('quiz-edit-answer-chords').value = ansObj.chords || '';
+        const linkAns = (q && q.type === 'link' && q.answer && typeof q.answer === 'object') ? q.answer : { key: '', measures: ['', '', '', ''] };
+        $('quiz-edit-link-key').value = linkAns.key || '';
+        ['quiz-edit-link-m1', 'quiz-edit-link-m2', 'quiz-edit-link-m3', 'quiz-edit-link-m4'].forEach((id, i) => {
+            $(id).value = (linkAns.measures && linkAns.measures[i]) || '';
+        });
         syncEditTypeUI();
         renderAnswerOptions(q ? q.answer : '');
         $('quiz-edit-modal').style.display = 'flex';
@@ -432,6 +440,7 @@ const Quiz = (function () {
         $('quiz-edit-answer-choice-row').style.display = (type === 'choice') ? '' : 'none';
         $('quiz-edit-answer-judge-row').style.display = (type === 'judge') ? '' : 'none';
         $('quiz-edit-analysis-row').style.display = (type === 'analysis') ? '' : 'none';
+        $('quiz-edit-link-row').style.display = (type === 'link') ? '' : 'none';
         updateJudgeButtons();
     }
 
@@ -477,6 +486,11 @@ const Quiz = (function () {
             obj.answer = $('quiz-edit-answer-choice').value;
         } else if (type === 'analysis') {
             obj.answer = { key: $('quiz-edit-answer-key').value.trim(), chords: $('quiz-edit-answer-chords').value.trim() };
+        } else if (type === 'link') {
+            obj.answer = {
+                key: $('quiz-edit-link-key').value.trim(),
+                measures: ['m1', 'm2', 'm3', 'm4'].map(s => $('quiz-edit-link-' + s).value.trim())
+            };
         }
 
         if (editState.id) {
@@ -623,12 +637,19 @@ const Quiz = (function () {
     function quizFinishSubjective() {
         if (!session) return;
         const q = session.questions[session.index];
-        if (!hwState.checkResults) hwRunCheck();
-        const results = hwState.checkResults || [];
-        const total = results.reduce((s, r) => s + (Number(r.score) || 0), 0);
-        const full = results.length * 5;
-        const percent = full ? (total / full) : 0;
-        session.answers[q.id] = Math.round(percent * Number(q.score) * 10) / 10;
+
+        if (q.type === 'link') {
+            // 连接题：对比学生标的和弦标记 vs 参考答案（每小节标记序列）
+            session.answers[q.id] = quizLinkScore(q);
+        } else {
+            // 配和声：和声规则检查
+            if (!hwState.checkResults) hwRunCheck();
+            const results = hwState.checkResults || [];
+            const total = results.reduce((s, r) => s + (Number(r.score) || 0), 0);
+            const full = results.length * 5;
+            const percent = full ? (total / full) : 0;
+            session.answers[q.id] = Math.round(percent * Number(q.score) * 10) / 10;
+        }
 
         if (typeof appState !== 'undefined') appState.currentChapter = quizPrevChapter;
         document.getElementById('hw-submit-quiz-btn').style.display = 'none';
@@ -642,6 +663,38 @@ const Quiz = (function () {
         const norm = s => String(s == null ? '' : s).replace(/[\s\u3000]/g, '').replace(/[、，,；;：:]/g, '-').replace(/[—\-]+/g, '-').toLowerCase();
         const a = norm(student), b = norm(answer);
         return a.length > 0 && a === b;
+    }
+
+    // 连接题评分：把学生标的小节标记序列与参考答案逐小节对比
+    function quizLinkLabelStr(lbl) {
+        const func = lbl.func || '';
+        const inv = lbl.inv || 'none';
+        let invStr = '';
+        if (inv === '6') invStr = '6';
+        else if (inv === '64') invStr = '46';
+        else if (func === 'K') invStr = '46';
+        return func + invStr;
+    }
+    function quizNormSeq(s) {
+        return String(s || '').replace(/\s+/g, '').replace(/[，,、;；]/g, ',').replace(/64/g, '46').toLowerCase();
+    }
+    function quizLinkSeqMatch(stuSeq, stdSeq) {
+        return quizNormSeq(stuSeq) === quizNormSeq(stdSeq);
+    }
+    function quizLinkScore(q) {
+        const stdMeasures = (q.answer && q.answer.measures) ? q.answer.measures : [];
+        const stuMeasures = hwState.measures.map(m =>
+            (m.chordLabels || []).slice().sort((a, b) => a.beat - b.beat)
+                .map(quizLinkLabelStr).join('，')
+        );
+        let matched = 0, total = 0;
+        stdMeasures.forEach((std, i) => {
+            if (std && std.trim()) {
+                total++;
+                if (quizLinkSeqMatch(stuMeasures[i], std)) matched++;
+            }
+        });
+        return total ? Math.round((matched / total) * Number(q.score) * 10) / 10 : 0;
     }
 
     function quizPrev() { if (session && session.index > 0) { session.index--; quizRenderQuestion(); } }
