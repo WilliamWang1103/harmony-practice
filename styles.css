@@ -1868,3 +1868,12 @@ body {
 .quiz-sheet-status { font-size: 0.72rem; flex-shrink: 0; }
 .quiz-sheet-item.done .quiz-sheet-status { color: #2e7d32; }
 .quiz-sheet-item.empty .quiz-sheet-status { color: #999; }
+
+/* 组卷 */
+.compose-row { display: flex; align-items: center; gap: 8px; margin-bottom: 8px; }
+.compose-type { flex: 1; font-size: 0.85rem; color: #5e35b1; font-weight: 600; }
+.compose-row label { display: flex; align-items: center; gap: 4px; font-size: 0.78rem; color: #555; }
+.compose-row input { width: 58px; padding: 6px; border: 1px solid #ddd; border-radius: 6px; font-size: 0.85rem; }
+.quiz-compose-total { text-align: center; font-size: 0.95rem; margin: 10px 0; }
+.quiz-compose-total b { font-size: 1.1rem; }
+.quiz-compose-target { color: #999; font-size: 0.78rem; }

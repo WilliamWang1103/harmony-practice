@@ -926,6 +926,11 @@ const Quiz = (function () {
                 return `<button class="quiz-chapter-btn" data-chapter="${c.id}">${c.title}<span class="quiz-chapter-cnt">${cnt} 题</span></button>`;
             }).join('');
         }
+        const composeBtn = $('quiz-compose-entry');
+        if (composeBtn) {
+            const majorClass = (typeof appState !== 'undefined' && appState.userInfo) ? (appState.userInfo.majorClass || '') : '';
+            composeBtn.style.display = (majorClass === '任课教师') ? '' : 'none';
+        }
         pageManager.switchToPage('quiz-page');
     }
 
@@ -935,6 +940,184 @@ const Quiz = (function () {
         if (!teacherBtn) return;
         const majorClass = (typeof appState !== 'undefined' && appState.userInfo) ? (appState.userInfo.majorClass || '') : '';
         teacherBtn.style.display = (majorClass === '任课教师') ? '' : 'none';
+    }
+
+    // ==================== 组卷 ====================
+    const COMPOSE_TYPES = ['choice', 'judge', 'link', 'analysis', 'harmonize'];
+    let composeConfig = {};
+    function initComposeConfig() {
+        const defaults = {
+            choice: { count: 5, score: 2 },
+            judge: { count: 0, score: 0 },
+            link: { count: 2, score: 10 },
+            analysis: { count: 2, score: 15 },
+            harmonize: { count: 1, score: 40 }
+        };
+        composeConfig = {};
+        COMPOSE_TYPES.forEach(t => { composeConfig[t] = { ...defaults[t] }; });
+    }
+    function renderComposeRows() {
+        const wrap = $('quiz-compose-rows');
+        if (!wrap) return;
+        wrap.innerHTML = COMPOSE_TYPES.map(t => {
+            const c = composeConfig[t] || { count: 0, score: 0 };
+            return `<div class="compose-row">
+                <span class="compose-type">${TYPES[t]}</span>
+                <label>数量<input type="number" class="compose-count" data-type="${t}" value="${c.count}" min="0"></label>
+                <label>每题分值<input type="number" class="compose-score" data-type="${t}" value="${c.score}" min="0" step="0.5"></label>
+            </div>`;
+        }).join('');
+        updateComposeTotal();
+    }
+    function updateComposeTotal() {
+        let total = 0;
+        COMPOSE_TYPES.forEach(t => { total += (composeConfig[t].count || 0) * (composeConfig[t].score || 0); });
+        const el = $('quiz-compose-total');
+        if (!el) return;
+        el.textContent = Math.round(total * 10) / 10;
+        el.style.color = (Math.abs(total - 100) < 0.01) ? '#2e7d32' : '#c62828';
+    }
+    function openComposeModal() {
+        initComposeConfig();
+        renderComposeRows();
+        $('quiz-compose-modal').style.display = 'flex';
+    }
+    async function generateCompose() {
+        const total = COMPOSE_TYPES.reduce((s, t) => s + (composeConfig[t].count || 0) * (composeConfig[t].score || 0), 0);
+        if (Math.abs(total - 100) > 0.01) { alert('总分需为 100 分（当前 ' + Math.round(total * 10) / 10 + ' 分）'); return; }
+
+        const pools = {};
+        for (const t of COMPOSE_TYPES) {
+            const need = (composeConfig[t].count || 0) * 3;
+            if (need === 0) { pools[t] = []; continue; }
+            const all = bank.filter(q => q.type === t);
+            if (all.length < need) { alert(TYPES[t] + ' 题库不足：需要 ' + need + ' 道（每套 ' + composeConfig[t].count + ' 道 × 3 套），现有 ' + all.length + ' 道'); return; }
+            pools[t] = all.slice().sort(() => Math.random() - 0.5).slice(0, need);
+        }
+
+        const papers = [[], [], []];
+        for (const t of COMPOSE_TYPES) {
+            const per = composeConfig[t].count || 0;
+            for (let p = 0; p < 3; p++) papers[p] = papers[p].concat(pools[t].slice(p * per, (p + 1) * per));
+        }
+        for (let i = 0; i < 3; i++) await downloadPaper(papers[i], i + 1);
+
+        $('quiz-compose-modal').style.display = 'none';
+        alert('已生成 3 套 Word 试卷，请查看浏览器下载');
+    }
+
+    async function downloadPaper(qs, index) {
+        const order = COMPOSE_TYPES.filter(t => (composeConfig[t].count || 0) > 0);
+        let html = '\ufeff<html xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:w="urn:schemas-microsoft-com:office:word" xmlns="http://www.w3.org/TR/REC-html40"><head><meta charset="utf-8"><!--[if gte mso 9]><xml><w:WordDocument><w:View>Print</w:View></w:WordDocument></xml><![endif]--><style>body{font-family:SimSun,serif;font-size:14px;}img{height:auto;}.q{margin:10px 0;}h2{color:#333;}table{border-collapse:collapse;}</style></head><body>';
+        html += `<h1 style="text-align:center;">和声学综合考试 · 第 ${index} 套</h1>`;
+        html += '<p>姓名：__________　班级：__________　学号：__________</p>';
+        order.forEach((t, gi) => {
+            const typeQs = qs.filter(q => q.type === t);
+            if (!typeQs.length) return;
+            const perScore = composeConfig[t].score;
+            html += `<h2>${'一二三四五'[gi]}、${TYPES[t]}（每题 ${perScore} 分，共 ${typeQs.length} 题，${Math.round(perScore * typeQs.length * 10) / 10} 分）</h2>`;
+            typeQs.forEach((q, qi) => {
+                html += `<div class="q"><p><b>${qi + 1}.</b> ${escapeHtml(q.text)}</p>`;
+                if (q.image) html += `<img src="${q.image}" width="${q.type === 'link' ? 302 : 567}">`;
+                if (q.type === 'choice' && q.options.length) html += '<p>' + q.options.map(o => o.label + '. ' + escapeHtml(o.text)).join('　') + '</p>';
+                else if (q.type === 'judge') html += '<p>（　）　对 / 错</p>';
+                else if (q.type === 'link' || q.type === 'harmonize') html += '<p>（在五线谱上作答）</p>';
+                else if (q.type === 'analysis') html += '<p>调式调性：____________　和弦级数：____________________</p>';
+                html += '</div>';
+            });
+        });
+        html += await buildAnswerSheet(qs);
+        html += '</body></html>';
+        downloadText(html, '和声学试卷_第' + index + '套.doc', 'application/msword');
+    }
+
+    async function buildAnswerSheet(qs) {
+        let sheet = '<h2 style="page-break-before:always; text-align:center;">答　题　卡</h2>';
+        sheet += '<p>姓名：__________　班级：__________　学号：__________</p>';
+
+        const order = COMPOSE_TYPES.filter(t => (composeConfig[t].count || 0) > 0);
+        for (let gi = 0; gi < order.length; gi++) {
+            const t = order[gi];
+            const typeQs = qs.filter(q => q.type === t);
+            if (!typeQs.length) continue;
+            const cn = '一二三四五'[gi];
+
+            if (t === 'choice') {
+                sheet += `<h3>${cn}、选择题（在选项上打√）</h3><table>`;
+                typeQs.forEach((q, i) => { sheet += `<tr><td style="padding:4px 8px;">${i + 1}.</td><td style="padding:4px 8px;">A（　）　B（　）　C（　）　D（　）</td></tr>`; });
+                sheet += '</table>';
+            } else if (t === 'judge') {
+                sheet += `<h3>${cn}、判断题（在对/错上打√）</h3><table>`;
+                typeQs.forEach((q, i) => { sheet += `<tr><td style="padding:4px 8px;">${i + 1}.</td><td style="padding:4px 8px;">对（　）　错（　）</td></tr>`; });
+                sheet += '</table>';
+            } else if (t === 'analysis') {
+                sheet += `<h3>${cn}、分析题（填空）</h3>`;
+                typeQs.forEach((q, i) => {
+                    sheet += `<p>${i + 1}. 调式调性：__________</p>`;
+                    sheet += `<p>　小节1：__________　小节2：__________</p>`;
+                    sheet += `<p>　小节3：__________　小节4：__________</p>`;
+                });
+            } else if (t === 'link') {
+                sheet += `<h3>${cn}、连接题（在大谱表上作答）</h3>`;
+                const staffImg = await generateBlankStaffBase64(1, true);
+                typeQs.forEach((q, i) => { sheet += `<p>第 ${i + 1} 题：</p><img src="${staffImg}" width="302">`; });
+            } else if (t === 'harmonize') {
+                sheet += `<h3>${cn}、配和声题（在大谱表上作答）</h3>`;
+                const staffImg = await generateBlankStaffBase64(2);
+                typeQs.forEach((q, i) => { sheet += `<p>第 ${i + 1} 题：</p><img src="${staffImg}" width="567">`; });
+            }
+        }
+        return sheet;
+    }
+
+    // 生成空白大谱表（VexFlow：连续谱表，仅右端终止线）→ PNG base64
+    function generateBlankStaffBase64(lines = 1, compact = false) {
+        return new Promise((resolve) => {
+            try {
+                const container = document.createElement('div');
+                const leftPad = 50;
+                const staveW = compact ? 222 : 660;
+                const systemH = compact ? 189 : 265;
+                const W = leftPad + staveW + 30;
+                const H = systemH * lines + 20;
+                const renderer = new Vex.Flow.Renderer(container, Vex.Flow.Renderer.Backends.SVG);
+                renderer.resize(W, H);
+                const context = renderer.getContext();
+
+                for (let li = 0; li < lines; li++) {
+                    const top = li * systemH;
+                    const trebleY = top + (compact ? 7 : 40);
+                    const bassY = top + (compact ? 122 : 165);
+                    const treble = new Vex.Flow.Stave(leftPad, trebleY, staveW, { space_between_lines: 15 });
+                    const bass = new Vex.Flow.Stave(leftPad, bassY, staveW, { space_between_lines: 15 });
+                    treble.addClef('treble');
+                    bass.addClef('bass');
+                    treble.setBegBarType(Vex.Flow.Barline.type.NONE).setEndBarType(Vex.Flow.Barline.type.NONE);
+                    bass.setBegBarType(Vex.Flow.Barline.type.NONE).setEndBarType(Vex.Flow.Barline.type.NONE);
+                    treble.setContext(context).draw();
+                    bass.setContext(context).draw();
+                    new Vex.Flow.StaveConnector(treble, bass).setType('brace').setContext(context).draw();
+                    new Vex.Flow.StaveConnector(treble, bass).setType('singleLeft').setContext(context).draw();
+                    new Vex.Flow.StaveConnector(treble, bass).setType('boldDoubleRight').setContext(context).draw();
+                }
+
+                const svg = container.querySelector('svg');
+                const xml = new XMLSerializer().serializeToString(svg);
+                const url = URL.createObjectURL(new Blob([xml], { type: 'image/svg+xml;charset=utf-8' }));
+                const img = new Image();
+                img.onload = () => {
+                    const canvas = document.createElement('canvas');
+                    canvas.width = W * 2; canvas.height = H * 2;
+                    const ctx = canvas.getContext('2d');
+                    ctx.fillStyle = '#fff'; ctx.fillRect(0, 0, canvas.width, canvas.height);
+                    ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+                    URL.revokeObjectURL(url);
+                    resolve(canvas.toDataURL('image/png'));
+                };
+                img.onerror = () => { URL.revokeObjectURL(url); resolve(''); };
+                img.src = url;
+            } catch (e) { resolve(''); }
+        });
     }
 
     // ==================== 事件绑定 ====================
@@ -1019,6 +1202,16 @@ const Quiz = (function () {
         $('quiz-chapter-list')?.addEventListener('click', e => {
             const btn = e.target.closest('.quiz-chapter-btn');
             if (btn) quizStart(btn.dataset.chapter);
+        });
+        $('quiz-compose-entry')?.addEventListener('click', openComposeModal);
+        $('quiz-compose-cancel')?.addEventListener('click', () => { $('quiz-compose-modal').style.display = 'none'; });
+        $('quiz-compose-generate')?.addEventListener('click', generateCompose);
+        $('quiz-compose-rows')?.addEventListener('input', e => {
+            const t = e.target.dataset.type;
+            if (!t || !composeConfig[t]) return;
+            const field = e.target.classList.contains('compose-count') ? 'count' : 'score';
+            composeConfig[t][field] = parseFloat(e.target.value) || 0;
+            updateComposeTotal();
         });
 
         // 结束页

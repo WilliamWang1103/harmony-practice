@@ -2658,6 +2658,9 @@ function handleModeSelection(mode) {
         document.querySelectorAll('.zs-phase-tab').forEach(t => t.classList.toggle('active', t.dataset.phase === 'basic'));
         pageManager.switchToPage('zheng-san-page');
         updateStats(); renderZhengSanHub();
+    } else if (mode === 'exam') {
+        if (typeof Quiz !== 'undefined' && Quiz.openStudentQuiz) Quiz.openStudentQuiz();
+        else alert('题库模块未加载');
     } else {
         alert(`“${mode}”模块正在开发中，敬请期待！`);
     }

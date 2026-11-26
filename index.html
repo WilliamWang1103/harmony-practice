@@ -71,12 +71,10 @@
                     </div>
                 </div>
 
-                <!-- 题库与考试入口 -->
+                <!-- 题库管理入口（仅任课教师可见） -->
                 <div class="quiz-entry-section">
-                    <h3 class="practice-mode-heading">📝 题库与考试</h3>
+                    <h3 class="practice-mode-heading">⚙️ 教师专区</h3>
                     <div class="quiz-entry-grid">
-                        <button id="quiz-student-entry" class="quiz-entry-btn student"><i
-                                class="fas fa-pen-to-square"></i><span>学生答题</span></button>
                         <button id="quiz-teacher-entry" class="quiz-entry-btn teacher"
                             style="display:none;"><i class="fas fa-gears"></i><span>题库管理</span></button>
                     </div>
@@ -409,9 +407,10 @@
                     <span class="current-datetime" id="quizClock">--:--:--</span>
                 </div>
                 <div id="quiz-chapter-select-wrap">
-                    <h2 class="exercise-title">📝 题库答题</h2>
+                    <h2 class="exercise-title">📝 综合考试</h2>
                     <p class="quiz-hint">请选择要作答的章节</p>
                     <div id="quiz-chapter-list" class="quiz-chapter-list"></div>
+                    <button id="quiz-compose-entry" class="quiz-subj-btn" style="display:none; margin-top:14px;">📋 组卷（生成 3 套 Word 试卷）</button>
                 </div>
                 <div id="quiz-question-wrap" style="display:none;">
                     <h2 class="exercise-title" id="quiz-title">答题</h2>
@@ -575,6 +574,19 @@
             <div class="quiz-edit-actions">
                 <button id="quiz-sheet-close" class="btn">继续答题</button>
                 <button id="quiz-sheet-submit" class="btn success">确认交卷</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- 组卷模态框（老师端，生成 3 套不重复试卷） -->
+    <div id="quiz-compose-modal" class="quiz-edit-modal" style="display:none;">
+        <div class="quiz-edit-box">
+            <div class="quiz-edit-title">📋 组卷（自动生成 3 套，总分 100）</div>
+            <div id="quiz-compose-rows" class="quiz-compose-rows"></div>
+            <div class="quiz-compose-total">总分：<b id="quiz-compose-total">0</b> 分 <span class="quiz-compose-target">（需 = 100）</span></div>
+            <div class="quiz-edit-actions">
+                <button id="quiz-compose-cancel" class="btn">取消</button>
+                <button id="quiz-compose-generate" class="btn primary">生成 3 套 Word 试卷</button>
             </div>
         </div>
     </div>
